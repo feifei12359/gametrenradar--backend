@@ -4,9 +4,12 @@ import { AppModule } from './app.module'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
-  // 开启 CORS，允许前端跨域访问
+  // 正确允许 Vercel 前端域名
   app.enableCors({
-    origin: "*",
+    origin: [
+      "https://game-trend-radar-qianduan.vercel.app"
+    ],
+    credentials: true,
   })
 
   const port = process.env.PORT || 3000
