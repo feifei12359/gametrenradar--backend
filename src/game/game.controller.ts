@@ -6,8 +6,8 @@ export class GameController {
   @Get()
   getGames() {
     return [
-      { id: 1, name: "Test Game 1" },
-      { id: 2, name: "Test Game 2" }
+      { id: 1, name: 'Test Game 1' },
+      { id: 2, name: 'Test Game 2' }
     ];
   }
 

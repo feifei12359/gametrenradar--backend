@@ -4,13 +4,14 @@ import { AppModule } from './app.module'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
-  // 正确允许 Vercel 前端域名
   app.enableCors({
     origin: [
       "https://game-trend-radar-qianduan.vercel.app"
     ],
     credentials: true,
   })
+
+  app.setGlobalPrefix('api')
 
   const port = process.env.PORT || 3000
 
