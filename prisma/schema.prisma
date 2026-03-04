@@ -1,17 +1,37 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+generator client {
+  provider = "prisma-client-js"
+}
+
 model Game {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  platform    String
+  trendType   String
+  firstSeenAt DateTime
+}
+
+model Trend {
+  id          Int      @id @default(autoincrement())
+  word        String
+  trendType   String
+  growthRate  Float?
+  acceleration Float?
+  platformScore Float?
+  aiScore     Float?
+  firstSeenAt DateTime?
+  platforms   String[]
+}
+
+model NewWord {
+  id          Int      @id @default(autoincrement())
+  token       String
+  noveltyScore Float?
+  recentCount  Int?
+  totalCount   Int?
+  firstSeenAt DateTime?
 }

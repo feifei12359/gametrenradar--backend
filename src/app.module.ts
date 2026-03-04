@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { GameController } from './game/game.controller';
-import { TrendController } from './trend/trend.controller';
+import { GameService } from './game/game.service';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [],
-  controllers: [GameController, TrendController],
-  providers: [],
+  imports: [PrismaModule],
+  controllers: [GameController],
+  providers: [GameService],
+  exports: [GameService],
 })
 export class AppModule {}
