@@ -1,25 +1,35 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import axios from 'axios';
+import fetch from 'node-fetch';
+import * as cron from 'node-cron';
 
 const prisma = new PrismaClient();
 
 @Injectable()
 export class GameService {
-
   private readonly logger = new Logger(GameService.name);
+
+  constructor() {
+    // 每天凌晨抓取一次趋势
+    cron.schedule('0 0 * * *', () => {
+      this.logger.log('自动抓取趋势任务启动');
+      this.fetchAndStoreTrends('exploding');
+      this.fetchAndStoreTrends('early');
+    });
+  }
+
+  async getGames() {
+    return prisma.game.findMany();
+  }
 
   async getAllGames() {
     return prisma.game.findMany();
   }
 
   async createGame(data: { name: string }) {
-    return prisma.game.create({ 
+    return prisma.game.create({
       data: {
-        name: data.name,
-        platform: 'unknown',
-        trendType: 'early',
-        firstSeenAt: new Date()
+        name: data.name
       }
     });
   }
@@ -28,88 +38,91 @@ export class GameService {
     return prisma.game.delete({ where: { id } });
   }
 
-  async getExplodingTrends() {
-    return prisma.trend.findMany({ where: { trendType: 'exploding' } });
-  }
-
-  async getEarlyTrends() {
-    return prisma.trend.findMany({ where: { trendType: 'early' } });
+  async getTrendsByCategory(category: string) {
+    const trends = await prisma.trend.findMany({ where: { category } });
+    if (trends.length === 0) {
+      // 没有数据就抓取一次
+      return this.fetchAndStoreTrends(category);
+    }
+    return trends;
   }
 
   async getAllTrends() {
     return prisma.trend.findMany();
   }
 
-  async getNewWords() {
-    const items = await prisma.newWord.findMany();
-    return { items };
+  async fetchAndStoreTrends(category: string) {
+    const trends: any[] = [];
+    try {
+      // 示例：抓取 Steam 新游戏
+      const steamResp = await fetch('https://store.steampowered.com/api/featuredcategories/');
+      const steamData = await steamResp.json() as any;
+      steamData?.top_sellers?.items?.forEach((item: any) => {
+        trends.push({
+          word: item.name,
+          category,
+          prediction_score: Math.floor(Math.random() * 100),
+          growth_rate: Math.random(),
+          acceleration: Math.random(),
+          platform_score: Math.floor(Math.random() * 100),
+          ai_score: Math.floor(Math.random() * 100),
+          first_seen_at: new Date(),
+          platforms: ['Steam'],
+        });
+      });
+
+      // 示例：抓取 Roblox 新游戏
+      const robloxResp = await fetch('https://games.roblox.com/v1/games/list?sortOrder=Asc&limit=10');
+      const robloxData = await robloxResp.json() as any;
+      robloxData.data?.forEach((game: any) => {
+        trends.push({
+          word: game.name,
+          category,
+          prediction_score: Math.floor(Math.random() * 100),
+          growth_rate: Math.random(),
+          acceleration: Math.random(),
+          platform_score: Math.floor(Math.random() * 100),
+          ai_score: Math.floor(Math.random() * 100),
+          first_seen_at: new Date(),
+          platforms: ['Roblox'],
+        });
+      });
+
+      // 保存到数据库
+      for (const t of trends) {
+        let game = await prisma.game.findFirst({ where: { name: t.word } });
+        if (!game) {
+          game = await prisma.game.create({ data: { name: t.word } });
+        }
+
+        await prisma.trend.create({
+          data: {
+            word: t.word,
+            prediction_score: t.prediction_score,
+            growth_rate: t.growth_rate,
+            acceleration: t.acceleration,
+            platform_score: t.platform_score,
+            ai_score: t.ai_score,
+            first_seen_at: t.first_seen_at,
+            platforms: t.platforms,
+            category: t.category,
+            gameId: game.id,
+          },
+        });
+      }
+
+      this.logger.log(`Fetched and stored ${trends.length} ${category} trends`);
+      return trends;
+    } catch (err) {
+      this.logger.error(`Error fetching ${category} trends`, err);
+      return [];
+    }
   }
 
   // 每日抓取任务
   async dailyJob() {
-    await this.scrapeRoblox();
-    await this.scrapeSteam();
-    await this.scrapeIndie();
-  }
-
-  private async scrapeRoblox() {
-    try {
-      const res = await axios.get('https://www.roblox.com/games'); // 示例 URL
-      const games = this.parseGamesFromHTML(res.data, 'roblox');
-      for (const g of games) {
-        await prisma.game.upsert({
-          where: { name: g.name },
-          update: g,
-          create: g,
-        });
-      }
-      this.logger.log(`抓取 Roblox 游戏: ${games.length} 条`);
-    } catch (err) {
-      this.logger.error('抓取 Roblox 错误', err);
-    }
-  }
-
-  private async scrapeSteam() {
-    try {
-      const res = await axios.get('https://store.steampowered.com/search/?filter=popular'); // 示例 URL
-      const games = this.parseGamesFromHTML(res.data, 'steam');
-      for (const g of games) {
-        await prisma.game.upsert({
-          where: { name: g.name },
-          update: g,
-          create: g,
-        });
-      }
-      this.logger.log(`抓取 Steam 游戏: ${games.length} 条`);
-    } catch (err) {
-      this.logger.error('抓取 Steam 错误', err);
-    }
-  }
-
-  private async scrapeIndie() {
-    try {
-      const res = await axios.get('https://www.indiedb.com/games'); // 示例 URL
-      const games = this.parseGamesFromHTML(res.data, 'indie');
-      for (const g of games) {
-        await prisma.game.upsert({
-          where: { name: g.name },
-          update: g,
-          create: g,
-        });
-      }
-      this.logger.log(`抓取 Indie 游戏: ${games.length} 条`);
-    } catch (err) {
-      this.logger.error('抓取 Indie 错误', err);
-    }
-  }
-
-  private parseGamesFromHTML(html: string, platform: string) {
-    // 这里 AI 可以帮你解析 HTML
-    // 示例返回格式：
-    return [
-      { name: `${platform} Game 1`, platform, trendType: 'exploding', firstSeenAt: new Date() },
-      { name: `${platform} Game 2`, platform, trendType: 'exploding', firstSeenAt: new Date() },
-    ];
+    await this.fetchAndStoreTrends('exploding');
+    await this.fetchAndStoreTrends('early');
   }
 
 }
