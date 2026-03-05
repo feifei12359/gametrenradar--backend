@@ -1,29 +1,26 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+generator client {
+  provider = "prisma-client-js"
+}
+
 model Game {
-  id     Int     @id @default(autoincrement())
-  name   String
-  trends Trend[]
+  id       Int    @id
+  name     String
+  platform String
 }
 
 model Trend {
-  id               Int      @id @default(autoincrement())
-  word             String
-  prediction_score Float?
-  growth_rate      Float?
-  acceleration     Float?
-  platform_score   Float?
-  ai_score         Float?
-  first_seen_at    DateTime?
-  platforms        String[]
-  category         String
-  gameId           Int
-  game             Game     @relation(fields: [gameId], references: [id])
+  id          Int     @id
+  word        String
+  prediction  Float?
+  growthRate  Float?
+  acceleration Float?
+  platformScore Float?
+  aiScore      Float?
+  firstSeenAt DateTime?
+  platforms   String[]
 }
