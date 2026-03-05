@@ -22,7 +22,7 @@ async function main() {
         platformScore: 70,
         aiScore: 90,
         firstSeenAt: new Date(),
-        platforms: ['Steam', 'Roblox']
+        platforms: 'Steam,Roblox'
       },
       {
         id: 2,
@@ -33,7 +33,7 @@ async function main() {
         platformScore: 60,
         aiScore: 80,
         firstSeenAt: new Date(),
-        platforms: ['Steam']
+        platforms: 'Steam'
       }
     ]
   });
