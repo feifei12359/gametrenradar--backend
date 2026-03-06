@@ -4,10 +4,12 @@ const appModule = require('./app.module');
 async function bootstrap() {
   const app = await core.NestFactory.create(appModule.AppModule);
 
-  // 允许前端域名访问
   app.enableCors({
-    origin: ['https://game-trend-radar-qianduan.vercel.app', 'http://localhost:3000'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: [
+      'https://game-trend-radar-qianduan.vercel.app', // 允许前端
+      'http://localhost:3000', // 本地开发允许
+    ],
+    methods: ['GET', 'POST'],
     credentials: true,
   });
 
