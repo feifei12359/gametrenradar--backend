@@ -6,15 +6,16 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AppModule = void 0;
+exports.TrendModule = void 0;
 const common_1 = require("@nestjs/common");
-const game_module_1 = require("./game/game.module");
-const trend_module_1 = require("./trend/trend.module");
-let AppModule = class AppModule {
+let TrendModule = class TrendModule {
 };
-exports.AppModule = AppModule;
-exports.AppModule = AppModule = __decorate([
+exports.TrendModule = TrendModule;
+exports.TrendModule = TrendModule = __decorate([
     (0, common_1.Module)({
-        imports: [game_module_1.GameModule, trend_module_1.TrendModule],
+        imports: [],
+        controllers: [],
+        providers: [],
+        exports: [],
     })
-], AppModule);
+], TrendModule);
