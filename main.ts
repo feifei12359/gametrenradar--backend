@@ -6,13 +6,14 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      'https://game-trend-radar-qianduan.vercel.app', // 你的前端
-      'http://localhost:3000', // 本地调试
+      'http://localhost:3000',
+      'https://game-trend-radar-qianduan.vercel.app',
     ],
-    methods: ['GET', 'POST'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
-  await app.listen(process.env.PORT || 8080);
+  await app.listen(process.env.PORT || 3000);
 }
+
 bootstrap();
