@@ -9,4 +9,4 @@ import { DailyJobModule } from './daily-job/daily-job.module';
   controllers: [HealthController],
   providers: [],
 })
-export class AppModule { }
+export class AppModule {}
