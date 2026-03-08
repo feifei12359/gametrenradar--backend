@@ -4,10 +4,10 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // 设置全局前缀 api
+  // ✅ 全局前缀
   app.setGlobalPrefix('api');
 
-  // 开启 CORS，仅允许前端域名
+  // ✅ CORS 设置
   app.enableCors({
     origin: ["https://game-trend-radar-qianduan.vercel.app"],
     credentials: true,
