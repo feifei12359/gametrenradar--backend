@@ -5,7 +5,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
   app.enableCors({
-    origin: ['https://game-trend-radar-qianduan.vercel.app'], // 前端域名
+    origin: [
+      "https://game-trend-radar-qianduan.vercel.app"
+    ],
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
   });
   const port = process.env.PORT || 8080;
