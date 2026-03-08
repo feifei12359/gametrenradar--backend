@@ -1,12 +1,13 @@
 import { Controller, Get } from '@nestjs/common';
-import { GameService } from './game.service';
 
-@Controller('api/games')
+@Controller('games')
 export class GameController {
-  constructor(private readonly gameService: GameService) {}
-
   @Get()
   async getGames() {
-    return this.gameService.getAllGames();
+    // 返回模拟数据
+    return [
+      { id: 1, name: 'Test Game 1', platform: 'steam' },
+      { id: 2, name: 'Test Game 2', platform: 'roblox' },
+    ];
   }
 }

@@ -6,16 +6,11 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.setGlobalPrefix('api');
     app.enableCors({
-        origin: [
-            "https://game-trend-radar-qianduan.vercel.app",
-            "http://localhost:3000"
-        ],
-        methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-        credentials: true
+        origin: ['https://game-trend-radar-qianduan.vercel.app'],
+        credentials: true,
     });
     const port = process.env.PORT || 8080;
     await app.listen(port);
     console.log(`🚀 Server running on port ${port}`);
 }
 bootstrap();
-//# sourceMappingURL=main.js.map

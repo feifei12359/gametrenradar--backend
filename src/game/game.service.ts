@@ -1,23 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
-
-const prisma = new PrismaClient();
 
 @Injectable()
 export class GameService {
   private readonly logger = new Logger(GameService.name);
 
+  constructor(private readonly prisma: PrismaService) {}
+
   async getAllGames() {
-    return prisma.game.findMany();
+    return this.prisma.game.findMany();
   }
 
   async createGame(data: { id: number; name: string; platform: string }) {
-    return prisma.game.create({ data });
+    return this.prisma.game.create({ data });
   }
 
   async deleteGame(id: number) {
-    return prisma.game.delete({ where: { id } });
+    return this.prisma.game.delete({ where: { id } });
   }
 
   async fetchRobloxGames() {
@@ -25,7 +25,7 @@ export class GameService {
       const res = await axios.get('https://www.roblox.com/games');
       const games = this.parseGamesFromHTML(res.data, 'roblox');
       for (const g of games) {
-        await prisma.game.upsert({
+        await this.prisma.game.upsert({
           where: { id: g.id },
           update: g,
           create: g,
@@ -42,7 +42,7 @@ export class GameService {
       const res = await axios.get('https://store.steampowered.com/search/?filter=popular');
       const games = this.parseGamesFromHTML(res.data, 'steam');
       for (const g of games) {
-        await prisma.game.upsert({
+        await this.prisma.game.upsert({
           where: { id: g.id },
           update: g,
           create: g,
@@ -59,7 +59,7 @@ export class GameService {
       const res = await axios.get('https://indiegamewebsite.example.com'); // 替换真实网站
       const games = this.parseGamesFromHTML(res.data, 'indie');
       for (const g of games) {
-        await prisma.game.upsert({
+        await this.prisma.game.upsert({
           where: { id: g.id },
           update: g,
           create: g,

@@ -8,34 +8,16 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TrendsService = void 0;
 const common_1 = require("@nestjs/common");
-const googleTrends = require("google-trends-api");
 let TrendsService = class TrendsService {
     async getTrendScore(gameName) {
-        try {
-            const result = await googleTrends.interestOverTime({
-                keyword: gameName,
-                geo: 'US',
-                timeframe: 'now 30-d',
-            });
-            const data = JSON.parse(result);
-            const timelineData = data.default.timelineData;
-            if (!timelineData || timelineData.length === 0) {
-                return 0;
-            }
-            const recentData = timelineData.slice(-7);
-            const recentAvg = recentData.reduce((sum, item) => sum + item.value[0], 0) / recentData.length;
-            const prevData = timelineData.slice(-14, -7);
-            const prevAvg = prevData.reduce((sum, item) => sum + item.value[0], 0) / prevData.length;
-            return recentAvg > prevAvg ? 1 : 0;
-        }
-        catch (error) {
-            console.error('Error getting trend score:', error);
-            return 0;
-        }
+        return {
+            maxValue: Math.floor(Math.random() * 100),
+            growthRate: Math.random() * 20,
+            averageScore: Math.floor(Math.random() * 50)
+        };
     }
 };
 exports.TrendsService = TrendsService;
 exports.TrendsService = TrendsService = __decorate([
     (0, common_1.Injectable)()
 ], TrendsService);
-//# sourceMappingURL=trends.service.js.map

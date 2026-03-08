@@ -1,76 +1,34 @@
 import { Controller, Get, Post } from '@nestjs/common';
 
-@Controller('api')
+@Controller('trend')
 export class TrendController {
-  @Get('trend/exploding')
-  async getExplodingTrends() {
+  @Get('exploding')
+  getExplodingTrends() {
+    // 返回模拟数据或实际抓取数据
     return [
-      {
-        word: 'Space Shooter',
-        prediction_score: 85,
-        growth_rate: 0.8,
-        acceleration: 0.5,
-        platform_score: 70,
-        ai_score: 90,
-        first_seen_at: new Date(),
-        platforms: ['Steam', 'Roblox']
-      },
-      {
-        word: 'Puzzle Master',
-        prediction_score: 78,
-        growth_rate: 0.6,
-        acceleration: 0.3,
-        platform_score: 60,
-        ai_score: 80,
-        first_seen_at: new Date(),
-        platforms: ['Steam']
-      }
+      { keyword: 'Space Shooter', score: 95 },
+      { keyword: 'Puzzle Master', score: 88 },
     ];
   }
 
-  @Get('trend/early')
-  async getEarlyTrends() {
-    return [];
-  }
-
-  @Get('trend/all')
-  async getAllTrends() {
+  @Get('early')
+  getEarlyTrends() {
     return [
-      {
-        word: 'Space Shooter',
-        prediction_score: 85,
-        growth_rate: 0.8,
-        acceleration: 0.5,
-        platform_score: 70,
-        ai_score: 90,
-        first_seen_at: new Date(),
-        platforms: ['Steam', 'Roblox']
-      },
-      {
-        word: 'Puzzle Master',
-        prediction_score: 78,
-        growth_rate: 0.6,
-        acceleration: 0.3,
-        platform_score: 60,
-        ai_score: 80,
-        first_seen_at: new Date(),
-        platforms: ['Steam']
-      }
+      { word: 'Puzzle Quest', prediction_score: 70, growth_rate: 5, acceleration: 0.5, platform_score: 60, ai_score: 65, first_seen_at: new Date(), platforms: ['Steam'] }
     ];
   }
 
-  @Get('new-words')
-  async getNewWords() {
-    return { items: [] };
+  @Get('all')
+  getAllTrends() {
+    return [
+      { word: 'AI Game', prediction_score: 95, growth_rate: 12, acceleration: 2, platform_score: 80, ai_score: 90, first_seen_at: new Date(), platforms: ['Steam'] },
+      { word: 'Space Sandbox', prediction_score: 88, growth_rate: 10, acceleration: 1.5, platform_score: 70, ai_score: 85, first_seen_at: new Date(), platforms: ['Roblox'] },
+      { word: 'Puzzle Quest', prediction_score: 70, growth_rate: 5, acceleration: 0.5, platform_score: 60, ai_score: 65, first_seen_at: new Date(), platforms: ['Steam'] }
+    ];
   }
 
   @Post('daily-job')
-  async runDailyJob() {
-    return { ok: true, message: '完整检测已运行', timestamp: new Date() };
-  }
-
-  @Get('health')
-  async health() {
-    return { ok: true, time: new Date() };
+  runDailyJob() {
+    return { ok: true, message: '模拟完整检测已运行', timestamp: new Date() };
   }
 }

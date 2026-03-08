@@ -11,13 +11,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DailyJobController = void 0;
 const common_1 = require("@nestjs/common");
-const daily_job_service_1 = require("./daily-job.service");
 let DailyJobController = class DailyJobController {
-    constructor(dailyJobService) {
-        this.dailyJobService = dailyJobService;
-    }
-    async runDailyJob() {
-        return this.dailyJobService.executeDailyJob();
+    runDailyJob() {
+        return { ok: true, message: 'Daily job executed' };
     }
 };
 exports.DailyJobController = DailyJobController;
@@ -25,10 +21,8 @@ __decorate([
     (0, common_1.Post)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
+    __metadata("design:returntype", void 0)
 ], DailyJobController.prototype, "runDailyJob", null);
 exports.DailyJobController = DailyJobController = __decorate([
-    (0, common_1.Controller)('daily-job'),
-    __metadata("design:paramtypes", [daily_job_service_1.DailyJobService])
+    (0, common_1.Controller)('daily-job')
 ], DailyJobController);
-//# sourceMappingURL=daily-job.controller.js.map

@@ -9,13 +9,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScraperModule = void 0;
 const common_1 = require("@nestjs/common");
 const scraper_service_1 = require("./scraper.service");
+const game_module_1 = require("../game/game.module");
 let ScraperModule = class ScraperModule {
 };
 exports.ScraperModule = ScraperModule;
 exports.ScraperModule = ScraperModule = __decorate([
     (0, common_1.Module)({
+        imports: [game_module_1.GameModule],
         providers: [scraper_service_1.ScraperService],
         exports: [scraper_service_1.ScraperService],
     })
 ], ScraperModule);
-//# sourceMappingURL=scraper.module.js.map

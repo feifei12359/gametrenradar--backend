@@ -12,13 +12,10 @@ const client_1 = require("@prisma/client");
 let PrismaService = class PrismaService extends client_1.PrismaClient {
     async onModuleInit() {
         await this.$connect();
-    }
-    async onModuleDestroy() {
-        await this.$disconnect();
+        console.log('✅ Prisma connected successfully');
     }
 };
 exports.PrismaService = PrismaService;
 exports.PrismaService = PrismaService = __decorate([
     (0, common_1.Injectable)()
 ], PrismaService);
-//# sourceMappingURL=prisma.service.js.map
