@@ -18,3 +18,4 @@ exports.ScoringModule = ScoringModule = __decorate([
         exports: [scoring_service_1.ScoringService],
     })
 ], ScoringModule);
+//# sourceMappingURL=scoring.module.js.map

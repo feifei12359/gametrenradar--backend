@@ -1,2 +1,2 @@
-declare const AppModule: any;
-export { AppModule };
+export declare class AppModule {
+}

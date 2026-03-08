@@ -9,24 +9,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScoringService = void 0;
 const common_1 = require("@nestjs/common");
 let ScoringService = class ScoringService {
-    calculateNewWordScore(game, trendData, youtubeData) {
-        let trendScore = 0;
-        let youtubeScore = 0;
-        if (trendData) {
-            trendScore = trendData.maxValue || 0;
-        }
-        if (youtubeData) {
-            youtubeScore = youtubeData.videoCount || 0;
-        }
-        return Math.round((trendScore + youtubeScore) / 2);
+    calculateNewScore(publishDate) {
+        const daysSincePublish = (Date.now() - publishDate.getTime()) / (1000 * 60 * 60 * 24);
+        return daysSincePublish < 14 ? 1 : 0;
     }
-    determineCandidate(score) {
-        return {
-            isCandidate: score >= 30
-        };
+    calculateTotalScore(newScore, trendScore, ytScore) {
+        return newScore + trendScore + ytScore;
+    }
+    determineStatus(totalScore) {
+        return totalScore >= 2 ? 'worth_doing' : 'observe';
     }
 };
 exports.ScoringService = ScoringService;
 exports.ScoringService = ScoringService = __decorate([
     (0, common_1.Injectable)()
 ], ScoringService);
+//# sourceMappingURL=scoring.service.js.map

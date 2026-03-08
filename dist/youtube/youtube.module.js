@@ -8,13 +8,16 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.YoutubeModule = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
 const youtube_service_1 = require("./youtube.service");
 let YoutubeModule = class YoutubeModule {
 };
 exports.YoutubeModule = YoutubeModule;
 exports.YoutubeModule = YoutubeModule = __decorate([
     (0, common_1.Module)({
+        imports: [config_1.ConfigModule],
         providers: [youtube_service_1.YoutubeService],
         exports: [youtube_service_1.YoutubeService],
     })
 ], YoutubeModule);
+//# sourceMappingURL=youtube.module.js.map

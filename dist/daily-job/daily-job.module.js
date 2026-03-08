@@ -8,15 +8,27 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DailyJobModule = void 0;
 const common_1 = require("@nestjs/common");
-const daily_job_service_1 = require("./daily-job.service");
+const scraper_module_1 = require("../scraper/scraper.module");
 const game_module_1 = require("../game/game.module");
+const trends_module_1 = require("../trends/trends.module");
+const youtube_module_1 = require("../youtube/youtube.module");
+const scoring_module_1 = require("../scoring/scoring.module");
+const daily_job_service_1 = require("./daily-job.service");
+const daily_job_controller_1 = require("./daily-job.controller");
 let DailyJobModule = class DailyJobModule {
 };
 exports.DailyJobModule = DailyJobModule;
 exports.DailyJobModule = DailyJobModule = __decorate([
     (0, common_1.Module)({
-        imports: [game_module_1.GameModule],
+        imports: [
+            scraper_module_1.ScraperModule,
+            game_module_1.GameModule,
+            trends_module_1.TrendsModule,
+            youtube_module_1.YoutubeModule,
+            scoring_module_1.ScoringModule,
+        ],
         providers: [daily_job_service_1.DailyJobService],
-        exports: [daily_job_service_1.DailyJobService],
+        controllers: [daily_job_controller_1.DailyJobController],
     })
 ], DailyJobModule);
+//# sourceMappingURL=daily-job.module.js.map

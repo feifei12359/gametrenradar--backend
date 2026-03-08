@@ -5,7 +5,11 @@ const app_module_1 = require("./app.module");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.enableCors({
-        origin: ["https://game-trend-radar-qianduan.vercel.app"],
+        origin: [
+            'https://game-trend-radar-qianduan.vercel.app',
+            'http://localhost:3000'
+        ],
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
         credentials: true,
     });
     const port = process.env.PORT || 3000;
@@ -13,3 +17,4 @@ async function bootstrap() {
     console.log(`🚀 Application running on port ${port}`);
 }
 bootstrap();
+//# sourceMappingURL=main.js.map

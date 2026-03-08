@@ -8,13 +8,36 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
+const schedule_1 = require("@nestjs/schedule");
+const prisma_module_1 = require("./prisma/prisma.module");
 const game_module_1 = require("./game/game.module");
-const trend_module_1 = require("./trend/trend.module");
+const scraper_module_1 = require("./scraper/scraper.module");
+const trends_module_1 = require("./trends/trends.module");
+const youtube_module_1 = require("./youtube/youtube.module");
+const scoring_module_1 = require("./scoring/scoring.module");
+const daily_job_module_1 = require("./daily-job/daily-job.module");
+const health_controller_1 = require("./health/health.controller");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [game_module_1.GameModule, trend_module_1.TrendModule],
+        imports: [
+            config_1.ConfigModule.forRoot({
+                isGlobal: true,
+            }),
+            schedule_1.ScheduleModule.forRoot(),
+            prisma_module_1.PrismaModule,
+            game_module_1.GameModule,
+            scraper_module_1.ScraperModule,
+            trends_module_1.TrendsModule,
+            youtube_module_1.YoutubeModule,
+            scoring_module_1.ScoringModule,
+            daily_job_module_1.DailyJobModule,
+        ],
+        controllers: [health_controller_1.HealthController],
+        providers: [],
     })
 ], AppModule);
+//# sourceMappingURL=app.module.js.map

@@ -18,3 +18,4 @@ exports.PrismaModule = PrismaModule = __decorate([
         exports: [prisma_service_1.PrismaService],
     })
 ], PrismaModule);
+//# sourceMappingURL=prisma.module.js.map

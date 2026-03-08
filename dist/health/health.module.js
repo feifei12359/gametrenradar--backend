@@ -6,16 +6,15 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ScraperModule = void 0;
+exports.HealthModule = void 0;
 const common_1 = require("@nestjs/common");
-const scraper_service_1 = require("./scraper.service");
-let ScraperModule = class ScraperModule {
+const health_controller_1 = require("./health.controller");
+let HealthModule = class HealthModule {
 };
-exports.ScraperModule = ScraperModule;
-exports.ScraperModule = ScraperModule = __decorate([
+exports.HealthModule = HealthModule;
+exports.HealthModule = HealthModule = __decorate([
     (0, common_1.Module)({
-        providers: [scraper_service_1.ScraperService],
-        exports: [scraper_service_1.ScraperService],
+        controllers: [health_controller_1.HealthController],
     })
-], ScraperModule);
-//# sourceMappingURL=scraper.module.js.map
+], HealthModule);
+//# sourceMappingURL=health.module.js.map

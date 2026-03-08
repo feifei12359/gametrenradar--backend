@@ -18,3 +18,4 @@ exports.TrendsModule = TrendsModule = __decorate([
         exports: [trends_service_1.TrendsService],
     })
 ], TrendsModule);
+//# sourceMappingURL=trends.module.js.map
