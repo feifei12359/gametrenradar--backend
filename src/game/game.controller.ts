@@ -1,12 +1,16 @@
 import { Controller, Get } from '@nestjs/common';
 
 @Controller('games')
-export class GameController {
+export class GamesController {
+
   @Get()
   getGames() {
     return [
-      { id: 1, name: 'Test Game 1', platform: 'steam' },
-      { id: 2, name: 'Test Game 2', platform: 'roblox' },
+      {
+        name: 'Example Game',
+        platform: 'Steam',
+        trendScore: 82,
+      },
     ];
   }
 }
