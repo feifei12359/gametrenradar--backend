@@ -4,18 +4,16 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // 设置全局 API 前缀
   app.setGlobalPrefix('api');
 
-  // 启用 CORS
   app.enableCors({
-    origin: [' `https://game-trend-radar-qianduan.vercel.app` ', 'http://localhost:3000'],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: true,
     credentials: true,
   });
 
-  const port = process.env.PORT || 8080;
-  await app.listen(port);
+  const port = process.env.PORT || 3000;
+
+  await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 Server running on port ${port}`);
 }
