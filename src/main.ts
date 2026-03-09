@@ -4,11 +4,11 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ⚡ CORS 配置
+  // 允许跨域访问
   app.enableCors({
     origin: [
       ' `https://game-trend-radar-qianduan.vercel.app` ', // 生产前端
-      'http://localhost:3000',                         // 本地调试
+      'http://localhost:3000',                        // 本地调试
     ],
     methods: 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
     credentials: true,
