@@ -5,13 +5,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: '*', // 先全部允许
-    methods: 'GET,POST,PUT,DELETE',
-    allowedHeaders: 'Content-Type',
+    origin: '*',
   });
 
-  await app.listen(8080);
+  const port = process.env.PORT || 8080;
 
-  console.log('🚀 Server running on port 8080');
+  await app.listen(port);
+
+  console.log(`🚀 Server running on port ${port}`);
 }
 bootstrap();
