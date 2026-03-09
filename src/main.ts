@@ -7,7 +7,7 @@ async function bootstrap() {
   // 允许跨域访问
   app.enableCors({
     origin: [
-      ' `https://game-trend-radar-qianduan.vercel.app` ', // 生产前端
+      'https://game-trend-radar-qianduan.vercel.app', // 生产前端
       'http://localhost:3000',                        // 本地调试
     ],
     methods: 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
