@@ -7,4 +7,4 @@ import { TrendService } from './trend.service';
   controllers: [TrendController],
   providers: [TrendService],
 })
-export class TrendModule {}
+export class TrendModule { }
