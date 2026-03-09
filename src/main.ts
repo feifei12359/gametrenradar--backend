@@ -4,8 +4,10 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // API 前缀
   app.setGlobalPrefix('api');
 
+  // 完全开放 CORS（开发阶段推荐）
   app.enableCors({
     origin: '*',
     methods: '*',
