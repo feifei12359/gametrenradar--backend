@@ -1,12 +1,9 @@
 import { Module } from '@nestjs/common';
-import { HealthController } from './health/health.controller';
 import { TrendModule } from './trend/trend.module';
-import { GameModule } from './game/game.module';
+import { NewWordsModule } from './new-words/new-words.module';
 import { DailyJobModule } from './daily-job/daily-job.module';
 
 @Module({
-  imports: [TrendModule, GameModule, DailyJobModule],
-  controllers: [HealthController],
-  providers: [],
+  imports: [TrendModule, NewWordsModule, DailyJobModule],
 })
 export class AppModule {}

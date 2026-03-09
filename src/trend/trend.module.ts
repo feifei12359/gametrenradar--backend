@@ -4,4 +4,4 @@ import { TrendController } from './trend.controller';
 @Module({
   controllers: [TrendController],
 })
-export class TrendModule { }
+export class TrendModule {}
