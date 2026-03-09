@@ -6,21 +6,31 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GameService = void 0;
+exports.TrendService = void 0;
 const common_1 = require("@nestjs/common");
-let GameService = class GameService {
-    getGames() {
+let TrendService = class TrendService {
+    getExploding() {
         return [
-            { id: 1, name: 'Space Shooter', platform: 'steam' },
-            { id: 2, name: 'Puzzle Master', platform: 'roblox' },
+            { keyword: 'Space Shooter', score: 95 },
+            { keyword: 'Puzzle Master', score: 88 },
         ];
     }
-    createGame(gameData) {
-        console.log('Creating game:', gameData);
-        return gameData;
+    getEarly() {
+        return [
+            { keyword: 'Adventure Quest', score: 50 },
+            { keyword: 'Tower Defense', score: 45 },
+        ];
+    }
+    getAll() {
+        return [
+            { keyword: 'Space Shooter', score: 95 },
+            { keyword: 'Puzzle Master', score: 88 },
+            { keyword: 'Adventure Quest', score: 50 },
+            { keyword: 'Tower Defense', score: 45 },
+        ];
     }
 };
-exports.GameService = GameService;
-exports.GameService = GameService = __decorate([
+exports.TrendService = TrendService;
+exports.TrendService = TrendService = __decorate([
     (0, common_1.Injectable)()
-], GameService);
+], TrendService);

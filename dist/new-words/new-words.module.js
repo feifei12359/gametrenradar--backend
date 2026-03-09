@@ -6,14 +6,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DailyJobService = void 0;
+exports.NewWordsModule = void 0;
 const common_1 = require("@nestjs/common");
-let DailyJobService = class DailyJobService {
-    runJob() {
-        return { status: 'Daily job executed successfully', timestamp: new Date() };
-    }
+const new_words_controller_1 = require("./new-words.controller");
+let NewWordsModule = class NewWordsModule {
 };
-exports.DailyJobService = DailyJobService;
-exports.DailyJobService = DailyJobService = __decorate([
-    (0, common_1.Injectable)()
-], DailyJobService);
+exports.NewWordsModule = NewWordsModule;
+exports.NewWordsModule = NewWordsModule = __decorate([
+    (0, common_1.Module)({
+        controllers: [new_words_controller_1.NewWordsController],
+    })
+], NewWordsModule);

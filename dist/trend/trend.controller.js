@@ -11,28 +11,14 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TrendController = void 0;
 const common_1 = require("@nestjs/common");
+const trend_service_1 = require("./trend.service");
 let TrendController = class TrendController {
-    getExplodingTrends() {
-        return [
-            { keyword: 'Space Shooter', score: 95 },
-            { keyword: 'Puzzle Master', score: 88 },
-        ];
+    constructor(trendService) {
+        this.trendService = trendService;
     }
-    getEarlyTrends() {
-        return [
-            { word: 'Puzzle Quest', prediction_score: 70, growth_rate: 5, acceleration: 0.5, platform_score: 60, ai_score: 65, first_seen_at: new Date(), platforms: ['Steam'] }
-        ];
-    }
-    getAllTrends() {
-        return [
-            { word: 'AI Game', prediction_score: 95, growth_rate: 12, acceleration: 2, platform_score: 80, ai_score: 90, first_seen_at: new Date(), platforms: ['Steam'] },
-            { word: 'Space Sandbox', prediction_score: 88, growth_rate: 10, acceleration: 1.5, platform_score: 70, ai_score: 85, first_seen_at: new Date(), platforms: ['Roblox'] },
-            { word: 'Puzzle Quest', prediction_score: 70, growth_rate: 5, acceleration: 0.5, platform_score: 60, ai_score: 65, first_seen_at: new Date(), platforms: ['Steam'] }
-        ];
-    }
-    runDailyJob() {
-        return { ok: true, message: '模拟完整检测已运行', timestamp: new Date() };
-    }
+    getExploding() { return this.trendService.getExploding(); }
+    getEarly() { return this.trendService.getEarly(); }
+    getAll() { return this.trendService.getAll(); }
 };
 exports.TrendController = TrendController;
 __decorate([
@@ -40,25 +26,20 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
-], TrendController.prototype, "getExplodingTrends", null);
+], TrendController.prototype, "getExploding", null);
 __decorate([
     (0, common_1.Get)('early'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
-], TrendController.prototype, "getEarlyTrends", null);
+], TrendController.prototype, "getEarly", null);
 __decorate([
     (0, common_1.Get)('all'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
-], TrendController.prototype, "getAllTrends", null);
-__decorate([
-    (0, common_1.Post)('daily-job'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], TrendController.prototype, "runDailyJob", null);
+], TrendController.prototype, "getAll", null);
 exports.TrendController = TrendController = __decorate([
-    (0, common_1.Controller)('trend')
+    (0, common_1.Controller)('trend'),
+    __metadata("design:paramtypes", [trend_service_1.TrendService])
 ], TrendController);

@@ -5,8 +5,13 @@ import { Injectable } from '@nestjs/common';
 export class GameService {
   getGames() {
     return [
-      { id: 1, name: 'Space Shooter', platform: 'steam' },
-      { id: 2, name: 'Puzzle Master', platform: 'roblox' },
+      { id:1, name: 'Space Shooter', platform: 'steam' },
+      { id:2, name: 'Puzzle Master', platform: 'roblox' },
     ];
+  }
+
+  createGame(gameData: any) {
+    console.log('Creating game:', gameData);
+    return gameData;
   }
 }

@@ -8,17 +8,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DailyJobModule = void 0;
 const common_1 = require("@nestjs/common");
-const daily_job_service_1 = require("./daily-job.service");
 const daily_job_controller_1 = require("./daily-job.controller");
-const game_module_1 = require("../game/game.module");
+const daily_job_service_1 = require("./daily-job.service");
 let DailyJobModule = class DailyJobModule {
 };
 exports.DailyJobModule = DailyJobModule;
 exports.DailyJobModule = DailyJobModule = __decorate([
     (0, common_1.Module)({
-        imports: [game_module_1.GameModule],
         controllers: [daily_job_controller_1.DailyJobController],
         providers: [daily_job_service_1.DailyJobService],
-        exports: [daily_job_service_1.DailyJobService],
     })
 ], DailyJobModule);

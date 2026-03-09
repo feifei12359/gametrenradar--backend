@@ -15,9 +15,21 @@ let NewWordsController = class NewWordsController {
     getNewWords() {
         return {
             items: [
-                { token: 'Quantum Jump', noveltyScore: 95, recentCount: 3, totalCount: 3, firstSeenAt: new Date() },
-                { token: 'Neon Racer', noveltyScore: 88, recentCount: 2, totalCount: 2, firstSeenAt: new Date() }
-            ]
+                {
+                    token: '新词1',
+                    noveltyScore: 92,
+                    recentCount: 6,
+                    totalCount: 12,
+                    firstSeenAt: new Date(),
+                },
+                {
+                    token: '新词2',
+                    noveltyScore: 85,
+                    recentCount: 3,
+                    totalCount: 7,
+                    firstSeenAt: new Date(),
+                },
+            ],
         };
     }
 };

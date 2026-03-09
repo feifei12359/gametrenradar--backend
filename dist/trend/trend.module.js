@@ -9,13 +9,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TrendModule = void 0;
 const common_1 = require("@nestjs/common");
 const trend_controller_1 = require("./trend.controller");
+const trend_service_1 = require("./trend.service");
 let TrendModule = class TrendModule {
 };
 exports.TrendModule = TrendModule;
 exports.TrendModule = TrendModule = __decorate([
     (0, common_1.Module)({
         controllers: [trend_controller_1.TrendController],
-        providers: [],
-        exports: [],
+        providers: [trend_service_1.TrendService],
     })
 ], TrendModule);

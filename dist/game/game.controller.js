@@ -11,12 +11,13 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameController = void 0;
 const common_1 = require("@nestjs/common");
+const game_service_1 = require("./game.service");
 let GameController = class GameController {
-    async getGames() {
-        return [
-            { id: 1, name: 'Test Game 1', platform: 'steam' },
-            { id: 2, name: 'Test Game 2', platform: 'roblox' },
-        ];
+    constructor(gameService) {
+        this.gameService = gameService;
+    }
+    getGames() {
+        return this.gameService.getGames();
     }
 };
 exports.GameController = GameController;
@@ -24,8 +25,9 @@ __decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
+    __metadata("design:returntype", void 0)
 ], GameController.prototype, "getGames", null);
 exports.GameController = GameController = __decorate([
-    (0, common_1.Controller)('api/games')
+    (0, common_1.Controller)('games'),
+    __metadata("design:paramtypes", [game_service_1.GameService])
 ], GameController);
