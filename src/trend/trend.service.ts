@@ -3,22 +3,30 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class TrendService {
+  // 获取爆发趋势
   getExploding() {
+    // 这里可以接入你的数据库或算法
     return [
-      { keyword: '爆发词1', prediction_score: 95, growth_rate: 1.5, acceleration: 0.8, platformScore: 80, aiScore: 90, firstSeenAt: new Date(), platforms: ['steam'] },
-      { keyword: '爆发词2', prediction_score: 88, growth_rate: 1.2, acceleration: 0.5, platformScore: 70, aiScore: 85, firstSeenAt: new Date(), platforms: ['roblox'] },
+      { keyword: 'Space Shooter', score: 95 },
+      { keyword: 'Puzzle Master', score: 88 },
     ];
   }
 
+  // 获取早期趋势
   getEarly() {
     return [
-      { keyword: '早期词1', prediction_score: 75, growth_rate: 1.1, acceleration: 0.4, platformScore: 60, aiScore: 70, firstSeenAt: new Date(), platforms: ['steam'] },
+      { keyword: 'Adventure Quest', score: 50 },
+      { keyword: 'Tower Defense', score: 45 },
     ];
   }
 
+  // 获取全部趋势
   getAll() {
     return [
-      { keyword: '全部词1', prediction_score: 60, growth_rate: 1.0, acceleration: 0.3, platformScore: 50, aiScore: 65, firstSeenAt: new Date(), platforms: ['steam','roblox'] },
+      { keyword: 'Space Shooter', score: 95 },
+      { keyword: 'Puzzle Master', score: 88 },
+      { keyword: 'Adventure Quest', score: 50 },
+      { keyword: 'Tower Defense', score: 45 },
     ];
   }
 }
