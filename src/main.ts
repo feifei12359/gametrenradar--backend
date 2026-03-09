@@ -4,20 +4,14 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // API 前缀
-  app.setGlobalPrefix('api');
-
-  // ⭐允许所有跨域（先测试）
   app.enableCors({
-    origin: true,
-    credentials: true,
+    origin: '*', // 先全部允许
+    methods: 'GET,POST,PUT,DELETE',
+    allowedHeaders: 'Content-Type',
   });
 
-  const port = process.env.PORT || 8080;
+  await app.listen(8080);
 
-  await app.listen(port);
-
-  console.log(`🚀 Server running on port ${port}`);
+  console.log('🚀 Server running on port 8080');
 }
-
 bootstrap();
