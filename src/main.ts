@@ -4,16 +4,15 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // 开放跨域，前端 Vercel + 本地都可访问
   app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept',
+    origin: [' `https://game-trend-radar-qianduan.vercel.app` ', 'http://localhost:3000'],
+    methods: 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    credentials: true,
   });
 
   const port = process.env.PORT || 8080;
-
   await app.listen(port);
-
   console.log(`🚀 Server running on port ${port}`);
 }
 bootstrap();

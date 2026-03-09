@@ -1,9 +1,11 @@
+// backend/src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TrendModule } from './trend/trend.module';
-import { NewWordsModule } from './new-words/new-words.module';
+import { GameModule } from './game/game.module';
 import { DailyJobModule } from './daily-job/daily-job.module';
+import { PrismaModule } from './prisma/prisma.module'; // 如果用 Prisma
 
 @Module({
-  imports: [TrendModule, NewWordsModule, DailyJobModule],
+  imports: [PrismaModule, TrendModule, GameModule, DailyJobModule],
 })
-export class AppModule {}
+export class AppModule { }
