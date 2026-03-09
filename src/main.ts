@@ -7,10 +7,10 @@ async function bootstrap() {
   // API 前缀
   app.setGlobalPrefix('api');
 
-  // ⭐ 先全部允许跨域（调试用）
+  // ⭐允许所有跨域（先测试）
   app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: true,
+    credentials: true,
   });
 
   const port = process.env.PORT || 8080;
