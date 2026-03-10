@@ -1,12 +1,21 @@
-// backend/src/app.module.ts
 import { Module } from '@nestjs/common';
-import { TrendModule } from './trend/trend.module';
-import { GameModule } from './game/game.module';
-import { DailyJobModule } from './daily-job/daily-job.module';
-import { NewWordsModule } from './newwords/newwords.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { TrendController } from './controllers/trend.controller';
+import { CrawlerService } from './services/crawler.service';
+import { TokenService } from './services/token.service';
+import { AIScoreService } from './services/ai-score.service';
+import { TrendService } from './services/trend.service';
+import { DailyJobService } from './jobs/daily-job.service';
 
 @Module({
-  imports: [PrismaModule, TrendModule, GameModule, DailyJobModule, NewWordsModule],
+  imports: [PrismaModule],
+  controllers: [TrendController],
+  providers: [
+    CrawlerService,
+    TokenService,
+    AIScoreService,
+    TrendService,
+    DailyJobService
+  ],
 })
 export class AppModule { }

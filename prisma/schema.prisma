@@ -1,26 +1,34 @@
-datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
-}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
 }
 
-model Game {
-  id       Int    @id
-  name     String
-  platform String
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Trend {
-  id          Int     @id
-  word        String
-  prediction  Float?
-  growthRate  Float?
-  acceleration Float?
-  platformScore Float?
-  aiScore      Float?
-  firstSeenAt DateTime?
-  platforms   String
+  id               String   @id @default(cuid())
+  keyword          String   @unique
+  prediction_score Float
+  growth_rate      Float
+  acceleration     Float
+  platform_score   Float
+  ai_score         Float
+  platforms        String
+  first_seen_at    DateTime
+  created_at       DateTime @default(now())
+}
+
+model NewWord {
+  id             String   @id @default(cuid())
+  token          String   @unique
+  novelty_score  Float
+  recent_count   Int
+  total_count    Int
+  first_seen_at  DateTime
+  created_at     DateTime @default(now())
 }

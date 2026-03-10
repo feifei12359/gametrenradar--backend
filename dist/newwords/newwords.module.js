@@ -6,28 +6,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TrendService = void 0;
+exports.NewWordsModule = void 0;
 const common_1 = require("@nestjs/common");
-let TrendService = class TrendService {
-    getExploding() {
-        return [
-            { keyword: "Test Game 1", score: 95 },
-            { keyword: "Test Game 2", score: 88 }
-        ];
-    }
-    getEarly() {
-        return [
-            { keyword: "Early Game 1", score: 60 }
-        ];
-    }
-    getAll() {
-        return [
-            { keyword: "Game A", score: 95 },
-            { keyword: "Game B", score: 80 }
-        ];
-    }
+const newwords_controller_1 = require("./newwords.controller");
+let NewWordsModule = class NewWordsModule {
 };
-exports.TrendService = TrendService;
-exports.TrendService = TrendService = __decorate([
-    (0, common_1.Injectable)()
-], TrendService);
+exports.NewWordsModule = NewWordsModule;
+exports.NewWordsModule = NewWordsModule = __decorate([
+    (0, common_1.Module)({
+        controllers: [newwords_controller_1.NewWordsController],
+    })
+], NewWordsModule);

@@ -8,15 +8,26 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
-const trend_module_1 = require("./trend/trend.module");
-const game_module_1 = require("./game/game.module");
-const daily_job_module_1 = require("./daily-job/daily-job.module");
 const prisma_module_1 = require("./prisma/prisma.module");
+const trend_controller_1 = require("./controllers/trend.controller");
+const crawler_service_1 = require("./services/crawler.service");
+const token_service_1 = require("./services/token.service");
+const ai_score_service_1 = require("./services/ai-score.service");
+const trend_service_1 = require("./services/trend.service");
+const daily_job_service_1 = require("./jobs/daily-job.service");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, trend_module_1.TrendModule, game_module_1.GameModule, daily_job_module_1.DailyJobModule],
+        imports: [prisma_module_1.PrismaModule],
+        controllers: [trend_controller_1.TrendController],
+        providers: [
+            crawler_service_1.CrawlerService,
+            token_service_1.TokenService,
+            ai_score_service_1.AIScoreService,
+            trend_service_1.TrendService,
+            daily_job_service_1.DailyJobService
+        ],
     })
 ], AppModule);
