@@ -9,7 +9,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      " `https://game-trend-radar-qianduan.vercel.app` ",
+      "https://game-trend-radar-qianduan.vercel.app",
       "http://localhost:3000",
       "http://localhost:5173"
     ],
