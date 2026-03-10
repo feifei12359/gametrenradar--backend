@@ -1,4 +1,3 @@
-import './polyfill'; // Load polyfills for Node.js 18
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
@@ -16,10 +15,12 @@ async function bootstrap() {
     credentials: true
   });
 
-  const port = process.env.PORT || 8080;
-  await app.listen(port);
+  const port = process.env.PORT || 3000;
+  const host = '0.0.0.0';
 
-  console.log(`🚀 Server running on port ${port}`);
+  await app.listen(port, host);
+
+  console.log(`🚀 Server running on http://${host}:${port}`);
 }
 
 bootstrap();

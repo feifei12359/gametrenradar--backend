@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
+import { HealthController } from './health/health.controller';
 import { TrendController } from './controllers/trend.controller';
 import { CrawlerService } from './services/crawler.service';
 import { TokenService } from './services/token.service';
@@ -9,7 +10,7 @@ import { DailyJobService } from './jobs/daily-job.service';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [TrendController],
+  controllers: [HealthController, TrendController],
   providers: [
     CrawlerService,
     TokenService,
