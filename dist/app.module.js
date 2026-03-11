@@ -10,8 +10,7 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_module_1 = require("./prisma/prisma.module");
 const health_controller_1 = require("./health/health.controller");
-const trend_controller_1 = require("./trend/trend.controller");
-const new_words_controller_1 = require("./new-words/new-words.controller");
+const trend_controller_1 = require("./controllers/trend.controller");
 const token_service_1 = require("./services/token.service");
 const trend_service_1 = require("./services/trend.service");
 const daily_job_service_1 = require("./jobs/daily-job.service");
@@ -24,11 +23,7 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [prisma_module_1.PrismaModule],
-        controllers: [
-            health_controller_1.HealthController,
-            trend_controller_1.TrendController,
-            new_words_controller_1.NewWordsController
-        ],
+        controllers: [health_controller_1.HealthController, trend_controller_1.TrendController],
         providers: [
             token_service_1.TokenService,
             trend_service_1.TrendService,
