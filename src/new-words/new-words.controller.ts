@@ -1,27 +1,30 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post } from '@nestjs/common';
+import { TokenService } from '../services/token.service';
 
 @Controller('new-words')
 export class NewWordsController {
+  constructor(private readonly tokenService: TokenService) { }
 
   @Get()
-  getNewWords() {
+  async getNewWords() {
+    return this.tokenService.getNewWords();
+  }
+
+  @Post('clear')
+  async clearDatabase() {
+    await this.tokenService.clearDatabase();
     return {
-      items: [
-        {
-          token: '新词1',
-          noveltyScore: 92,
-          recentCount: 6,
-          totalCount: 12,
-          firstSeenAt: new Date(),
-        },
-        {
-          token: '新词2',
-          noveltyScore: 85,
-          recentCount: 3,
-          totalCount: 7,
-          firstSeenAt: new Date(),
-        },
-      ],
+      message: '数据库已清空',
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  @Post('analyze')
+  async analyzeTokens() {
+    await this.tokenService.analyzeTokens();
+    return {
+      message: '新词分析完成',
+      timestamp: new Date().toISOString()
     };
   }
 }
