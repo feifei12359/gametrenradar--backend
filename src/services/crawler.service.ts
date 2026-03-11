@@ -18,7 +18,7 @@ export class CrawlerService {
         const title = $(element).find('.title').text().trim();
         const tags = $(element).find('.top_tag').text().trim();
         const description = $(element).find('.search_reviewscore').text().trim();
-        
+
         if (title) {
           keywords.push(...this.extractKeywords(title));
         }
@@ -30,7 +30,7 @@ export class CrawlerService {
         }
       });
 
-      return [...new Set(keywords)].filter(keyword => keyword.length > 2);
+      return [...new Set(keywords)];
     } catch (error) {
       this.logger.error('Steam 抓取失败:', error);
       return [];
@@ -52,7 +52,7 @@ export class CrawlerService {
         }
       });
 
-      return [...new Set(keywords)].filter(keyword => keyword.length > 2);
+      return [...new Set(keywords)];
     } catch (error) {
       this.logger.error('Roblox 抓取失败:', error);
       return [];
@@ -87,7 +87,7 @@ export class CrawlerService {
         }
       }
 
-      return [...new Set(keywords)].filter(keyword => keyword.length > 2);
+      return [...new Set(keywords)];
     } catch (error) {
       this.logger.error('Reddit 抓取失败:', error);
       return [];
@@ -99,15 +99,7 @@ export class CrawlerService {
       .toLowerCase()
       .replace(/[^a-zA-Z0-9\s]/g, ' ')
       .split(/\s+/)
-      .filter(word => word.length > 2)
-      .filter(word => !this.isStopWord(word));
-  }
-
-  private isStopWord(word: string): boolean {
-    const stopWords = new Set([
-      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must'
-    ]);
-    return stopWords.has(word);
+      .filter(word => word.length > 2);
   }
 
   async crawlAllPlatforms(): Promise<string[]> {
