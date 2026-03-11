@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post } from '@nestjs/common';
 import { TrendService } from '../services/trend.service';
 import { TokenService } from '../services/token.service';
 import { DailyJobService } from '../jobs/daily-job.service';
@@ -9,7 +9,7 @@ export class TrendController {
     private readonly trendService: TrendService,
     private readonly tokenService: TokenService,
     private readonly dailyJobService: DailyJobService
-  ) {}
+  ) { }
 
   @Get('/trend/exploding')
   async getExplodingTrends() {
@@ -31,8 +31,13 @@ export class TrendController {
     return this.tokenService.getNewWords();
   }
 
-  @Get('/daily-job')
+  @Post('/daily-job')
   async runFullDetection() {
     return this.dailyJobService.runFullDetection();
+  }
+
+  @Post('/daily-job/clear')
+  async clearDatabase() {
+    return this.dailyJobService.clearDatabase();
   }
 }

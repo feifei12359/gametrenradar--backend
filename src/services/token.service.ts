@@ -25,7 +25,8 @@ export class TokenService {
     'what', 'which', 'who', 'when', 'where', 'why', 'how',
     'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such',
     'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
-    'can', 'will', 'just', 'should', 'now'
+    'can', 'will', 'just', 'should', 'now',
+    'holiday', 'card', 'golf', 'demo', 'disc', 'duck', 'children', 'panic', 'curse', 'amitabha', 'buddha'
   ]);
 
   // 颜色词列表
@@ -42,7 +43,8 @@ export class TokenService {
   private junkWords = new Set([
     'video', 'videos', 'watch', 'subscribe', 'like', 'comment', 'share',
     'channel', 'youtube', 'tutorial', 'guide', 'how', 'play', 'playing',
-    'episode', 'part', 'series', 'season', 'chapter'
+    'episode', 'part', 'series', 'season', 'chapter',
+    'duck', 'panic', 'children', 'amitabha', 'buddha', 'holiday', 'card', 'golf', 'demo', 'disc'
   ]);
 
   // 年份词模式
@@ -57,7 +59,7 @@ export class TokenService {
     // 提取游戏名候选（强制 2-4 词短语）
     const gameCandidates = this.extractGameCandidates(videos);
     
-    for (const { gameName, score } of gameCandidates) {
+    for (const { gameName, score, videoCount, recentCount } of gameCandidates) {
       try {
         const existingWord = await this.prisma.newWord.findUnique({
           where: { token: gameName }
@@ -68,9 +70,9 @@ export class TokenService {
           await this.prisma.newWord.update({
             where: { token: gameName },
             data: {
-              recent_count: existingWord.recent_count + 1,
-              total_count: existingWord.total_count + 1,
-              novelty_score: ((existingWord.recent_count + 1) / (existingWord.total_count + 1)) * score
+              recent_count: existingWord.recent_count + recentCount,
+              total_count: existingWord.total_count + videoCount,
+              novelty_score: ((existingWord.recent_count + recentCount) / (existingWord.total_count + videoCount)) * score
             }
           });
         } else {
@@ -79,8 +81,8 @@ export class TokenService {
             data: {
               token: gameName,
               novelty_score: 1.0 * score,
-              recent_count: 1,
-              total_count: 1,
+              recent_count: recentCount,
+              total_count: videoCount,
               first_seen_at: new Date()
             }
           });
@@ -142,18 +144,8 @@ export class TokenService {
     };
   }
 
-  async calculateWordFrequency(tokens: string[]): Promise<Map<string, number>> {
-    const frequencyMap = new Map<string, number>();
-    
-    for (const token of tokens) {
-      frequencyMap.set(token, (frequencyMap.get(token) || 0) + 1);
-    }
-    
-    return frequencyMap;
-  }
-
   // 提取游戏名候选（强制 2-4 词短语）
-  private extractGameCandidates(videos: any[]): { gameName: string; score: number }[] {
+  private extractGameCandidates(videos: any[]): { gameName: string; score: number; videoCount: number; recentCount: number }[] {
     const gameNameMap = new Map<string, { count: number; recentCount: number }>();
     
     for (const video of videos) {
@@ -192,7 +184,7 @@ export class TokenService {
       .filter(([_, data]) => data.count >= 2) // 至少出现 2 次
       .map(([gameName, data]) => {
         const score = this.calculateGameNameScore(data.count, data.recentCount);
-        return { gameName, score };
+        return { gameName, score, videoCount: data.count, recentCount: data.recentCount };
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, 50); // 只保留前 50 个
