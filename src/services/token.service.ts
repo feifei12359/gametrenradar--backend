@@ -1,11 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { YoutubeService } from '../youtube/youtube.service';
 
 @Injectable()
 export class TokenService {
   private readonly logger = new Logger(TokenService.name);
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly youtubeService: YoutubeService
+  ) { }
 
   // 停用词黑名单
   private stopWords = new Set([
@@ -17,30 +21,6 @@ export class TokenService {
     'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must'
   ]);
 
-  // 游戏领域加权词根
-  private gameRoots = new Map([
-    ['simulator', 5],
-    ['tycoon', 5],
-    ['obby', 4],
-    ['tower', 4],
-    ['defense', 4],
-    ['anime', 3],
-    ['battle', 3],
-    ['battlegrounds', 3],
-    ['rpg', 3],
-    ['survival', 3],
-    ['shooter', 3],
-    ['horror', 3],
-    ['idle', 2],
-    ['clicker', 2],
-    ['farm', 2],
-    ['driving', 2],
-    ['racing', 2],
-    ['strategy', 2],
-    ['co-op', 2],
-    ['pvp', 2]
-  ]);
-
   // 颜色词列表
   private colorWords = new Set([
     'black', 'white', 'red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown', 'gray', 'grey'
@@ -48,31 +28,31 @@ export class TokenService {
 
   // 商品相关词
   private productWords = new Set([
-    'merch', 'shirt', 'shirts', 'pants', 'hat', 'hats', 'shirt', 'shirts', 'jacket', 'jackets', 'shoe', 'shoes'
+    'merch', 'shirt', 'shirts', 'pants', 'hat', 'hats', 'jacket', 'jackets', 'shoe', 'shoes'
   ]);
 
   // 年份词模式
   private yearPattern = /^\d{4}$/;
 
-  async analyzeTokens(tokens: string[]): Promise<void> {
-    this.logger.log('开始分析关键词');
+  async analyzeTokens(): Promise<void> {
+    this.logger.log('开始分析 Roblox 新游戏词');
 
-    // 提取 n-grams
-    const ngrams = this.extractNGrams(tokens);
+    // 获取最近 7 天的 Roblox 视频
+    const videos = await this.youtubeService.getRobloxVideos(7);
 
-    // 过滤和打分
-    const filteredTokens = this.filterAndScoreTokens(ngrams);
+    // 提取游戏名候选
+    const gameCandidates = this.extractGameCandidates(videos);
 
-    for (const { token, score } of filteredTokens) {
+    for (const { gameName, score } of gameCandidates) {
       try {
         const existingWord = await this.prisma.newWord.findUnique({
-          where: { token }
+          where: { token: gameName }
         });
 
         if (existingWord) {
           // 更新现有词
           await this.prisma.newWord.update({
-            where: { token },
+            where: { token: gameName },
             data: {
               recent_count: existingWord.recent_count + 1,
               total_count: existingWord.total_count + 1,
@@ -83,7 +63,7 @@ export class TokenService {
           // 创建新词
           await this.prisma.newWord.create({
             data: {
-              token,
+              token: gameName,
               novelty_score: 1.0 * score,
               recent_count: 1,
               total_count: 1,
@@ -92,7 +72,7 @@ export class TokenService {
           });
         }
       } catch (error) {
-        this.logger.error(`分析关键词 ${token} 失败:`, error);
+        this.logger.error(`分析游戏名 ${gameName} 失败:`, error);
       }
     }
   }
@@ -124,111 +104,134 @@ export class TokenService {
     return frequencyMap;
   }
 
-  // 提取 n-grams (unigram, bigram, trigram)
-  private extractNGrams(tokens: string[]): string[] {
-    const ngrams: string[] = [];
+  // 提取游戏名候选
+  private extractGameCandidates(videos: any[]): { gameName: string; score: number }[] {
+    const gameNameMap = new Map<string, { count: number; recentCount: number }>();
 
-    // Unigrams
-    ngrams.push(...tokens);
+    for (const video of videos) {
+      const title = video.title.toLowerCase();
 
-    // Bigrams
-    for (let i = 0; i < tokens.length - 1; i++) {
-      ngrams.push(`${tokens[i]} ${tokens[i + 1]}`);
-    }
+      // 提取 2-4 词短语
+      const phrases = this.extractPhrases(title);
 
-    // Trigrams
-    for (let i = 0; i < tokens.length - 2; i++) {
-      ngrams.push(`${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`);
-    }
+      for (const phrase of phrases) {
+        if (this.isValidGameName(phrase)) {
+          const gameName = this.normalizeGameName(phrase);
 
-    return ngrams;
-  }
-
-  // 过滤和打分
-  private filterAndScoreTokens(tokens: string[]): { token: string; score: number }[] {
-    const frequencyMap = new Map<string, number>();
-
-    // 计算频率
-    for (const token of tokens) {
-      frequencyMap.set(token, (frequencyMap.get(token) || 0) + 1);
-    }
-
-    return Array.from(frequencyMap.entries())
-      .map(([token, frequency]) => {
-        if (!this.isValidToken(token, frequency)) {
-          return null;
+          if (gameName.length > 4) {
+            const current = gameNameMap.get(gameName) || { count: 0, recentCount: 0 };
+            gameNameMap.set(gameName, {
+              count: current.count + 1,
+              recentCount: current.recentCount + (this.isRecentVideo(video.publishedAt) ? 1 : 0)
+            });
+          }
         }
+      }
+    }
 
-        const score = this.calculateTokenScore(token, frequency);
-        return { token, score };
+    // 转换为数组并计算分数
+    return Array.from(gameNameMap.entries())
+      .filter(([_, data]) => data.count >= 2) // 至少出现 2 次
+      .map(([gameName, data]) => {
+        const score = this.calculateGameNameScore(data.count, data.recentCount);
+        return { gameName, score };
       })
-      .filter((item): item is { token: string; score: number } => item !== null)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 200); // 只保留前 200 个
+      .slice(0, 50); // 只保留前 50 个
   }
 
-  // 检查 token 是否有效
-  private isValidToken(token: string, frequency: number): boolean {
-    // 过滤长度小于 3 的 token
-    if (token.length < 3) {
+  // 提取短语
+  private extractPhrases(text: string): string[] {
+    const words = text
+      .replace(/[^a-zA-Z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 0);
+
+    const phrases: string[] = [];
+
+    // 2 词短语
+    for (let i = 0; i < words.length - 1; i++) {
+      phrases.push(`${words[i]} ${words[i + 1]}`);
+    }
+
+    // 3 词短语
+    for (let i = 0; i < words.length - 2; i++) {
+      phrases.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
+    }
+
+    // 4 词短语
+    for (let i = 0; i < words.length - 3; i++) {
+      phrases.push(`${words[i]} ${words[i + 1]} ${words[i + 2]} ${words[i + 3]}`);
+    }
+
+    return phrases;
+  }
+
+  // 检查是否为有效的游戏名
+  private isValidGameName(phrase: string): boolean {
+    const words = phrase.split(' ');
+
+    // 过滤长度小于 3 的词
+    if (words.some(word => word.length < 3)) {
       return false;
     }
 
-    // 过滤只出现 1 次的弱词
-    if (frequency < 2) {
-      return false;
-    }
-
-    // 过滤纯数字
-    if (/^\d+$/.test(token)) {
-      return false;
-    }
-
-    // 过滤年份
-    if (this.yearPattern.test(token)) {
-      return false;
-    }
-
-    // 过滤包含停用词的 token
-    const words = token.split(' ');
+    // 过滤包含停用词的短语
     if (words.some(word => this.stopWords.has(word))) {
       return false;
     }
 
-    // 过滤纯颜色词
-    if (words.some(word => this.colorWords.has(word)) && words.length === 1) {
+    // 过滤包含颜色词的短语
+    if (words.some(word => this.colorWords.has(word))) {
       return false;
     }
 
-    // 过滤商品相关词
+    // 过滤包含商品词的短语
     if (words.some(word => this.productWords.has(word))) {
+      return false;
+    }
+
+    // 过滤包含数字的短语
+    if (/.\d+/.test(phrase)) {
+      return false;
+    }
+
+    // 过滤年份
+    if (this.yearPattern.test(phrase)) {
       return false;
     }
 
     return true;
   }
 
-  // 计算 token 分数
-  private calculateTokenScore(token: string, frequency: number): number {
-    let score = frequency;
+  // 标准化游戏名
+  private normalizeGameName(name: string): string {
+    return name
+      .trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
 
-    // 词长加分
-    const wordCount = token.split(' ').length;
-    if (wordCount === 2) {
-      score *= 1.5; // bigram 加分
-    } else if (wordCount === 3) {
-      score *= 2.0; // trigram 加分
-    }
+  // 判断是否为最近视频
+  private isRecentVideo(publishedAt: Date): boolean {
+    const now = new Date();
+    const diffDays = (now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays <= 3;
+  }
 
-    // 游戏领域加权
-    const words = token.toLowerCase().split(' ');
-    for (const word of words) {
-      for (const [root, weight] of this.gameRoots.entries()) {
-        if (word.includes(root)) {
-          score *= weight;
-          break;
-        }
-      }
+  // 计算游戏名分数
+  private calculateGameNameScore(count: number, recentCount: number): number {
+    // 基础分数
+    let score = count * 2;
+
+    // 最近视频加分
+    score += recentCount * 3;
+
+    // 长度加分（2-4 词短语）
+    const wordCount = count.toString().length;
+    if (wordCount >= 2) {
+      score += 5;
     }
 
     return score;
