@@ -1,4 +1,3 @@
-// backend/src/trend/trend.controller.ts
 import { Controller, Get } from '@nestjs/common';
 import { TrendService } from './trend.service';
 
@@ -6,7 +5,18 @@ import { TrendService } from './trend.service';
 export class TrendController {
   constructor(private readonly trendService: TrendService) { }
 
-  @Get('exploding') getExploding() { return this.trendService.getExploding(); }
-  @Get('early') getEarly() { return this.trendService.getEarly(); }
-  @Get('all') getAll() { return this.trendService.getAll(); }
+  @Get('exploding')
+  async getExploding() {
+    return this.trendService.getExplodingTrends();
+  }
+
+  @Get('early')
+  async getEarly() {
+    return this.trendService.getEarlyTrends();
+  }
+
+  @Get('all')
+  async getAll() {
+    return this.trendService.getAllTrends();
+  }
 }
