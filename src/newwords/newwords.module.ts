@@ -1,7 +1,8 @@
+// backend/src/newwords/newwords.module.ts
 import { Module } from '@nestjs/common';
-import { NewWordsController } from './newwords.controller';
 
 @Module({
-  controllers: [NewWordsController],
+  controllers: [],
+  providers: [],
 })
-export class NewWordsModule {}
+export class NewWordsModule { }

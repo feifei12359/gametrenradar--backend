@@ -16,28 +16,34 @@ let TrendController = class TrendController {
     constructor(trendService) {
         this.trendService = trendService;
     }
-    getExploding() { return this.trendService.getExploding(); }
-    getEarly() { return this.trendService.getEarly(); }
-    getAll() { return this.trendService.getAll(); }
+    async getExploding() {
+        return this.trendService.getExplodingTrends();
+    }
+    async getEarly() {
+        return this.trendService.getEarlyTrends();
+    }
+    async getAll() {
+        return this.trendService.getAllTrends();
+    }
 };
 exports.TrendController = TrendController;
 __decorate([
     (0, common_1.Get)('exploding'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], TrendController.prototype, "getExploding", null);
 __decorate([
     (0, common_1.Get)('early'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], TrendController.prototype, "getEarly", null);
 __decorate([
     (0, common_1.Get)('all'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], TrendController.prototype, "getAll", null);
 exports.TrendController = TrendController = __decorate([
     (0, common_1.Controller)('trend'),

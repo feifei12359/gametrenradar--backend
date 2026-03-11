@@ -8,12 +8,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NewWordsModule = void 0;
 const common_1 = require("@nestjs/common");
-const newwords_controller_1 = require("./newwords.controller");
 let NewWordsModule = class NewWordsModule {
 };
 exports.NewWordsModule = NewWordsModule;
 exports.NewWordsModule = NewWordsModule = __decorate([
     (0, common_1.Module)({
-        controllers: [newwords_controller_1.NewWordsController],
+        controllers: [],
+        providers: [],
     })
 ], NewWordsModule);

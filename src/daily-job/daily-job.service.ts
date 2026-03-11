@@ -29,8 +29,7 @@ export class DailyJobService {
       this.logger.log('📈 Step2: 计算游戏趋势评分');
       await this.trendService.processTrends();
 
-      // 3️⃣ 防止数据库为空
-      await this.trendService.generateSampleTrends();
+      // 3️⃣ 防止数据库为空 - 跳过，使用真实数据
 
       const endTime = new Date();
 

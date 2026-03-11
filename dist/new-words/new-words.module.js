@@ -9,11 +9,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NewWordsModule = void 0;
 const common_1 = require("@nestjs/common");
 const new_words_controller_1 = require("./new-words.controller");
+const token_service_1 = require("../services/token.service");
+const youtube_service_1 = require("../youtube/youtube.service");
+const prisma_module_1 = require("../prisma/prisma.module");
 let NewWordsModule = class NewWordsModule {
 };
 exports.NewWordsModule = NewWordsModule;
 exports.NewWordsModule = NewWordsModule = __decorate([
     (0, common_1.Module)({
+        imports: [prisma_module_1.PrismaModule],
         controllers: [new_words_controller_1.NewWordsController],
+        providers: [token_service_1.TokenService, youtube_service_1.YoutubeService]
     })
 ], NewWordsModule);

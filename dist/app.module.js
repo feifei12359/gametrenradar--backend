@@ -9,25 +9,33 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_module_1 = require("./prisma/prisma.module");
-const trend_controller_1 = require("./controllers/trend.controller");
-const crawler_service_1 = require("./services/crawler.service");
+const health_controller_1 = require("./health/health.controller");
+const trend_controller_1 = require("./trend/trend.controller");
+const new_words_controller_1 = require("./new-words/new-words.controller");
 const token_service_1 = require("./services/token.service");
-const ai_score_service_1 = require("./services/ai-score.service");
 const trend_service_1 = require("./services/trend.service");
 const daily_job_service_1 = require("./jobs/daily-job.service");
+const youtube_service_1 = require("./youtube/youtube.service");
+const google_trends_service_1 = require("./services/google-trends.service");
+const ai_score_service_1 = require("./services/ai-score.service");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [prisma_module_1.PrismaModule],
-        controllers: [trend_controller_1.TrendController],
+        controllers: [
+            health_controller_1.HealthController,
+            trend_controller_1.TrendController,
+            new_words_controller_1.NewWordsController
+        ],
         providers: [
-            crawler_service_1.CrawlerService,
             token_service_1.TokenService,
-            ai_score_service_1.AIScoreService,
             trend_service_1.TrendService,
-            daily_job_service_1.DailyJobService
+            daily_job_service_1.DailyJobService,
+            youtube_service_1.YoutubeService,
+            google_trends_service_1.GoogleTrendsService,
+            ai_score_service_1.AIScoreService
         ],
     })
 ], AppModule);

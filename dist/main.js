@@ -11,8 +11,9 @@ async function bootstrap() {
         allowedHeaders: 'Content-Type, Accept',
         credentials: true
     });
-    const port = process.env.PORT || 8080;
-    await app.listen(port);
-    console.log(`🚀 Server running on port ${port}`);
+    const port = process.env.PORT || 3000;
+    const host = '0.0.0.0';
+    await app.listen(port, host);
+    console.log(`🚀 Server running on http://${host}:${port}`);
 }
 bootstrap();
