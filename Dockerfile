@@ -1,4 +1,4 @@
-FROM node:20-bullseye-slim
+FROM node:20-slim
 
 WORKDIR /app
 
@@ -14,4 +14,4 @@ RUN npm run build
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:prod"]
+CMD ["sh", "-c", "npx prisma db push && npm run start:prod"]
