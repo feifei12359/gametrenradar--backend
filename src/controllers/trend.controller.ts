@@ -33,7 +33,7 @@ export class TrendController {
 
   @Get('/daily-job')
   async runFullDetection() {
-    return this.dailyJobService.runFullDetection();
+    return this.dailyJobService.runJob();
   }
 
   @Post('/new-words/clear')
@@ -57,20 +57,17 @@ export class TrendController {
   @Post('/new-words/reset')
   async resetSystem() {
     const startedAt = new Date();
-    
+
     try {
-      // 1. 清空数据库
       await this.tokenService.clearDatabase();
-      
-      // 2. 重新分析 Roblox 新词
       await this.tokenService.analyzeTokens();
-      
-      // 3. 重新生成趋势数据
       await this.trendService.processTrends();
-      
+
       const finishedAt = new Date();
-      const durationSeconds = Math.round((finishedAt.getTime() - startedAt.getTime()) / 1000);
-      
+      const durationSeconds = Math.round(
+        (finishedAt.getTime() - startedAt.getTime()) / 1000
+      );
+
       return {
         success: true,
         message: '系统已重置并重新生成趋势数据',
@@ -80,8 +77,10 @@ export class TrendController {
       };
     } catch (error) {
       const finishedAt = new Date();
-      const durationSeconds = Math.round((finishedAt.getTime() - startedAt.getTime()) / 1000);
-      
+      const durationSeconds = Math.round(
+        (finishedAt.getTime() - startedAt.getTime()) / 1000
+      );
+
       return {
         success: false,
         message: '系统重置失败',
