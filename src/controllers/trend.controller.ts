@@ -36,6 +36,16 @@ export class TrendController {
     return this.dailyJobService.runFullDetection();
   }
 
+  @Post('/daily-job')
+  async runDailyJobPost() {
+    return this.dailyJobService.runFullDetection();
+  }
+
+  @Post('/daily-job/clear')
+  async clearDailyJobDatabase() {
+    return this.dailyJobService.clearDatabase();
+  }
+
   @Post('/new-words/clear')
   async clearDatabase() {
     await this.tokenService.clearDatabase();
@@ -90,5 +100,10 @@ export class TrendController {
         durationSeconds
       };
     }
+  }
+
+  @Post('/system/reset')
+  async resetSystemFromSystemRoute() {
+    return this.resetSystem();
   }
 }
