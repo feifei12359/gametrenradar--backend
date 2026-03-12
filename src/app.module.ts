@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthController } from './health/health.controller';
 import { TrendController } from './controllers/trend.controller';
+import { DailyJobController } from './controllers/daily-job.controller';
+import { SystemController } from './controllers/system.controller';
 import { DebugController } from './debug/debug.controller';
 import { TokenService } from './services/token.service';
 import { TrendService } from './services/trend.service';
@@ -12,7 +14,13 @@ import { AIScoreService } from './services/ai-score.service';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [HealthController, TrendController, DebugController],
+  controllers: [
+    HealthController,
+    TrendController,
+    DailyJobController,
+    SystemController,
+    DebugController,
+  ],
   providers: [
     TokenService,
     TrendService,
