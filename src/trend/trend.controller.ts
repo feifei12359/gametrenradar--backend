@@ -31,9 +31,9 @@ export class TrendController {
     return this.tokenService.getNewWords();
   }
 
-  @Get('daily-job')
+  @Get('/daily-job')
   async runFullDetection() {
-    return this.dailyJobService.runJob();
+    return this.dailyJobService.runFullDetection();
   }
 
   @Post('new-words/clear')

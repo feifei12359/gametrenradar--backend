@@ -11,10 +11,14 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TrendController = void 0;
 const common_1 = require("@nestjs/common");
-const trend_service_1 = require("./trend.service");
+const trend_service_1 = require("../services/trend.service");
+const token_service_1 = require("../services/token.service");
+const daily_job_service_1 = require("../jobs/daily-job.service");
 let TrendController = class TrendController {
-    constructor(trendService) {
+    constructor(trendService, tokenService, dailyJobService) {
         this.trendService = trendService;
+        this.tokenService = tokenService;
+        this.dailyJobService = dailyJobService;
     }
     async getExploding() {
         return this.trendService.getExplodingTrends();
@@ -25,27 +29,106 @@ let TrendController = class TrendController {
     async getAll() {
         return this.trendService.getAllTrends();
     }
+    async getNewWords() {
+        return this.tokenService.getNewWords();
+    }
+    async runFullDetection() {
+        return this.dailyJobService.runFullDetection();
+    }
+    async clearDatabase() {
+        await this.tokenService.clearDatabase();
+        return {
+            message: '数据库已清空',
+            timestamp: new Date().toISOString()
+        };
+    }
+    async analyzeTokens() {
+        await this.tokenService.analyzeTokens();
+        return {
+            message: '新词分析完成',
+            timestamp: new Date().toISOString()
+        };
+    }
+    async resetAndRerun() {
+        const startedAt = new Date();
+        try {
+            await this.tokenService.clearDatabase();
+            await this.tokenService.analyzeTokens();
+            await this.trendService.processTrends();
+            const finishedAt = new Date();
+            return {
+                success: true,
+                message: '系统已重置并重新生成趋势数据',
+                startedAt: startedAt.toISOString(),
+                finishedAt: finishedAt.toISOString(),
+                durationSeconds: Number(((finishedAt.getTime() - startedAt.getTime()) / 1000).toFixed(2))
+            };
+        }
+        catch (error) {
+            const finishedAt = new Date();
+            return {
+                success: false,
+                message: '系统重置失败',
+                error: error instanceof Error ? error.message : String(error),
+                startedAt: startedAt.toISOString(),
+                finishedAt: finishedAt.toISOString(),
+                durationSeconds: Number(((finishedAt.getTime() - startedAt.getTime()) / 1000).toFixed(2))
+            };
+        }
+    }
 };
 exports.TrendController = TrendController;
 __decorate([
-    (0, common_1.Get)('exploding'),
+    (0, common_1.Get)('trend/exploding'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], TrendController.prototype, "getExploding", null);
 __decorate([
-    (0, common_1.Get)('early'),
+    (0, common_1.Get)('trend/early'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], TrendController.prototype, "getEarly", null);
 __decorate([
-    (0, common_1.Get)('all'),
+    (0, common_1.Get)('trend/all'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], TrendController.prototype, "getAll", null);
+__decorate([
+    (0, common_1.Get)('new-words'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], TrendController.prototype, "getNewWords", null);
+__decorate([
+    (0, common_1.Get)('/daily-job'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], TrendController.prototype, "runFullDetection", null);
+__decorate([
+    (0, common_1.Post)('new-words/clear'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], TrendController.prototype, "clearDatabase", null);
+__decorate([
+    (0, common_1.Post)('new-words/analyze'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], TrendController.prototype, "analyzeTokens", null);
+__decorate([
+    (0, common_1.Post)('new-words/reset'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], TrendController.prototype, "resetAndRerun", null);
 exports.TrendController = TrendController = __decorate([
-    (0, common_1.Controller)('trend'),
-    __metadata("design:paramtypes", [trend_service_1.TrendService])
+    (0, common_1.Controller)(),
+    __metadata("design:paramtypes", [trend_service_1.TrendService,
+        token_service_1.TokenService,
+        daily_job_service_1.DailyJobService])
 ], TrendController);

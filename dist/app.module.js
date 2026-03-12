@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const prisma_module_1 = require("./prisma/prisma.module");
 const health_controller_1 = require("./health/health.controller");
 const trend_controller_1 = require("./controllers/trend.controller");
+const debug_controller_1 = require("./debug/debug.controller");
 const token_service_1 = require("./services/token.service");
 const trend_service_1 = require("./services/trend.service");
 const daily_job_service_1 = require("./jobs/daily-job.service");
@@ -23,7 +24,7 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [prisma_module_1.PrismaModule],
-        controllers: [health_controller_1.HealthController, trend_controller_1.TrendController],
+        controllers: [health_controller_1.HealthController, trend_controller_1.TrendController, debug_controller_1.DebugController],
         providers: [
             token_service_1.TokenService,
             trend_service_1.TrendService,

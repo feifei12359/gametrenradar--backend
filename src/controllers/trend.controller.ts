@@ -33,7 +33,7 @@ export class TrendController {
 
   @Get('/daily-job')
   async runFullDetection() {
-    return this.dailyJobService.runJob();
+    return this.dailyJobService.runFullDetection();
   }
 
   @Post('/new-words/clear')
