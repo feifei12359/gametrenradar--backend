@@ -14,40 +14,41 @@ export class SystemController {
   @Post('reset')
   async resetSystem() {
     const startTime = new Date();
-    
+
     try {
-      // 1. 清空数据库
       await this.tokenService.clearDatabase();
-      
-      // 2. 重新执行趋势检测
+
       const jobResult = await this.dailyJobService.runFullDetection();
-      
       const endTime = new Date();
-      const durationSeconds = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-      
+      const durationSeconds = Math.round(
+        (endTime.getTime() - startTime.getTime()) / 1000
+      );
+
       if (jobResult.success) {
         return {
           success: true,
-          message: '系统已重置并重跑完成',
+          message: 'System reset and rerun completed',
           startedAt: startTime.toISOString(),
           finishedAt: endTime.toISOString(),
           durationSeconds,
-          jobResult
+          jobResult,
         };
-      } else {
-        throw new Error(jobResult.message || '重跑失败');
       }
+
+      throw new Error(jobResult.error || 'Rerun failed');
     } catch (error) {
       const endTime = new Date();
-      const durationSeconds = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-      
+      const durationSeconds = Math.round(
+        (endTime.getTime() - startTime.getTime()) / 1000
+      );
+
       return {
         success: false,
-        message: '系统重置失败',
+        message: 'System reset failed',
         error: error instanceof Error ? error.message : String(error),
         startedAt: startTime.toISOString(),
         finishedAt: endTime.toISOString(),
-        durationSeconds
+        durationSeconds,
       };
     }
   }
