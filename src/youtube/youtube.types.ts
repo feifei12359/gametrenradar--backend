@@ -13,7 +13,9 @@ export type YoutubeVideo = {
 
 export type YoutubeSearchDebugResult = {
   requestParams: {
+    endpoint: string;
     query: string;
+    region: string;
     regionCode?: string;
     publishedAfter: string;
     order: 'date';
@@ -26,4 +28,9 @@ export type YoutubeSearchDebugResult = {
     channelTitle: string;
     publishedAt: string;
   }>;
+  error?: {
+    status?: number;
+    statusText?: string;
+    data?: unknown;
+  };
 };

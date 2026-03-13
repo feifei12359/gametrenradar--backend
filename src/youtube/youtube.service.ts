@@ -61,24 +61,55 @@ export class YoutubeService {
     query: string = DEFAULT_YOUTUBE_QUERY,
     days: number = 3,
   ): Promise<YoutubeSearchDebugResult> {
-    const { params, items } = await this.searchVideos({ days, region, query });
+    try {
+      const { params, items } = await this.searchVideos({ days, region, query });
 
-    return {
-      requestParams: {
-        query: params.q,
-        regionCode: params.regionCode,
-        publishedAfter: params.publishedAfter,
-        order: params.order,
-        maxResults: params.maxResults,
-      },
-      itemCount: items.length,
-      firstItems: items.slice(0, 3).map((item: any) => ({
-        videoId: item.id?.videoId ?? '',
-        title: item.snippet?.title ?? '',
-        channelTitle: item.snippet?.channelTitle ?? '',
-        publishedAt: item.snippet?.publishedAt ?? '',
-      })),
-    };
+      return {
+        requestParams: {
+          endpoint: this.searchUrl,
+          query: params.q,
+          region,
+          regionCode: params.regionCode,
+          publishedAfter: params.publishedAfter,
+          order: params.order,
+          maxResults: params.maxResults,
+        },
+        itemCount: items.length,
+        firstItems: items.slice(0, 3).map((item: any) => ({
+          videoId: item.id?.videoId ?? '',
+          title: item.snippet?.title ?? '',
+          channelTitle: item.snippet?.channelTitle ?? '',
+          publishedAt: item.snippet?.publishedAt ?? '',
+        })),
+      };
+    } catch (error) {
+      this.logAxiosError(`YouTube debug search failed region=${region} query=${query}`, error);
+
+      return {
+        requestParams: {
+          endpoint: this.searchUrl,
+          query,
+          region,
+          regionCode: this.mapRegionCode(region),
+          publishedAfter: new Date(
+            Date.now() - days * 24 * 60 * 60 * 1000,
+          ).toISOString(),
+          order: 'date',
+          maxResults: DEFAULT_YOUTUBE_MAX_RESULTS,
+        },
+        itemCount: 0,
+        firstItems: [],
+        error: axios.isAxiosError(error)
+          ? {
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              data: error.response?.data,
+            }
+          : {
+              data: error instanceof Error ? error.message : String(error),
+            },
+      };
+    }
   }
 
   async getVideoStatistics(videoId: string): Promise<any> {
@@ -123,7 +154,9 @@ export class YoutubeService {
 
     this.logger.log(
       `YouTube search params ${JSON.stringify({
+        endpoint: this.searchUrl,
         query: requestParams.q,
+        region: params.region,
         regionCode: requestParams.regionCode,
         publishedAfter: requestParams.publishedAfter,
         order: requestParams.order,
