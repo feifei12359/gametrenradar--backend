@@ -1,13 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { KeywordExtractionService } from '../keywords/keyword-extraction.service';
+import { KeywordFilterService } from '../keywords/keyword-filter.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  YoutubeSourceService,
+  type YoutubeVideoItem,
+} from '../sources/youtube/youtube-source.service';
 import { AnalyzeNewWordsDto } from './dto/analyze-new-words.dto';
-
-type SampleWord = {
-  keyword: string;
-  source: string;
-  region: string;
-  score: number;
-};
 
 type NewWordRecord = {
   id: string;
@@ -30,9 +29,23 @@ type NewWordApiView = NewWordRecord & {
   first_seen_at: Date;
 };
 
+type CandidateKeyword = {
+  keyword: string;
+  score: number;
+  source: string;
+  region: string;
+};
+
 @Injectable()
 export class NewWordsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(NewWordsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly youtubeSourceService: YoutubeSourceService,
+    private readonly keywordExtractionService: KeywordExtractionService,
+    private readonly keywordFilterService: KeywordFilterService,
+  ) {}
 
   async getAll(): Promise<NewWordApiView[]> {
     const items = await this.prisma.newWord.findMany({
@@ -46,38 +59,53 @@ export class NewWordsService {
     created: number;
     items: NewWordApiView[];
   }> {
-    const samples = this.buildSampleWords(dto.limit);
+    try {
+      const videos = await this.youtubeSourceService.fetchRecentRobloxVideos();
+      const candidates = this.buildCandidates(videos, dto.limit);
 
-    const created = await this.prisma.$transaction(
-      samples.map((item) =>
-        this.prisma.newWord.upsert({
-          where: {
-            keyword_source: {
+      if (!candidates.length) {
+        return {
+          created: 0,
+          items: [],
+        };
+      }
+
+      const savedItems = await this.prisma.$transaction(
+        candidates.map((item) =>
+          this.prisma.newWord.upsert({
+            where: {
+              keyword_source: {
+                keyword: item.keyword,
+                source: item.source,
+              },
+            },
+            update: {
+              score: item.score,
+              region: item.region,
+              status: 'analyzed',
+              firstSeenAt: new Date(),
+            },
+            create: {
               keyword: item.keyword,
               source: item.source,
+              region: item.region,
+              score: item.score,
+              status: 'analyzed',
             },
-          },
-          update: {
-            score: item.score,
-            region: item.region,
-            status: 'analyzed',
-            firstSeenAt: new Date(),
-          },
-          create: {
-            keyword: item.keyword,
-            source: item.source,
-            region: item.region,
-            score: item.score,
-            status: 'analyzed',
-          },
-        }),
-      ),
-    );
+          }),
+        ),
+      );
 
-    return {
-      created: created.length,
-      items: created.map((item: NewWordRecord) => this.toApiView(item)),
-    };
+      return {
+        created: savedItems.length,
+        items: savedItems.map((item: NewWordRecord) => this.toApiView(item)),
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to analyze new words from YouTube.';
+      this.logger.error(message);
+      throw new InternalServerErrorException(message);
+    }
   }
 
   async reset(): Promise<{ updated: number }> {
@@ -95,41 +123,60 @@ export class NewWordsService {
     return { deleted: result.count };
   }
 
-  private buildSampleWords(limit?: number): SampleWord[] {
-    const samples: SampleWord[] = [
-      {
-        keyword: 'Anime Saga',
-        source: 'youtube',
-        region: 'global',
-        score: 92,
-      },
-      {
-        keyword: 'Grow Garden Simulator',
-        source: 'roblox',
-        region: 'global',
-        score: 84,
-      },
-      {
-        keyword: 'Azure Latch',
-        source: 'google_trends',
-        region: 'global',
-        score: 67,
-      },
-      {
-        keyword: 'Bubble Gum Simulator Infinity',
-        source: 'roblox',
-        region: 'global',
-        score: 58,
-      },
-      {
-        keyword: 'Dungeon Extraction',
-        source: 'youtube',
-        region: 'us',
-        score: 44,
-      },
-    ];
+  private buildCandidates(videos: YoutubeVideoItem[], limit?: number): CandidateKeyword[] {
+    const bestByKeyword = new Map<string, CandidateKeyword>();
 
-    return typeof limit === 'number' && limit > 0 ? samples.slice(0, limit) : samples;
+    for (const video of videos) {
+      const extracted = this.keywordExtractionService.extractCandidates(video.title);
+      const filtered = this.keywordFilterService.filterCandidates(extracted);
+
+      for (const keyword of filtered) {
+        const candidate: CandidateKeyword = {
+          keyword,
+          source: 'youtube',
+          region: 'global',
+          score: this.scoreKeyword(keyword, video),
+        };
+
+        const existing = bestByKeyword.get(candidate.keyword.toLowerCase());
+        if (!existing || candidate.score > existing.score) {
+          bestByKeyword.set(candidate.keyword.toLowerCase(), candidate);
+        }
+      }
+    }
+
+    const values = [...bestByKeyword.values()].sort((a, b) => b.score - a.score);
+    return typeof limit === 'number' && limit > 0 ? values.slice(0, limit) : values;
+  }
+
+  private scoreKeyword(keyword: string, video: YoutubeVideoItem): number {
+    const tokenCount = keyword.split(' ').length;
+    const title = video.title.toLowerCase();
+
+    let score = 55;
+
+    if (tokenCount >= 3) {
+      score += 10;
+    }
+
+    if (/simulator|tycoon|defense|infinity|saga|latch/i.test(keyword)) {
+      score += 8;
+    }
+
+    if (title.includes('just released') || title.includes('release')) {
+      score += 10;
+    }
+
+    if (title.includes('new')) {
+      score += 5;
+    }
+
+    if (video.query.includes('new game')) {
+      score += 6;
+    }
+
+    const normalized = Math.min(90, Math.max(50, score));
+    return normalized;
   }
 
   private toApiView(item: NewWordRecord): NewWordApiView {
@@ -143,8 +190,4 @@ export class NewWordsService {
       first_seen_at: item.firstSeenAt,
     };
   }
-
-  // TODO: FutureYoutubeSource - replace sample words with extracted YouTube title candidates.
-  // TODO: FutureRobloxSource - enrich candidate scoring from Roblox game metadata.
-  // TODO: FutureTrendsSource - verify novelty and region fit from Google Trends.
 }
