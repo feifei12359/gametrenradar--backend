@@ -60,6 +60,17 @@ export class TrendService {
     return trends.map((item) => this.toApiView(item));
   }
 
+  async getTop(limit = 10): Promise<TrendApiView[]> {
+    const normalizedLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 100) : 10;
+
+    const trends = await this.prisma.trend.findMany({
+      orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
+      take: normalizedLimit,
+    });
+
+    return trends.map((item) => this.toApiView(item));
+  }
+
   async clearAll(): Promise<{ count: number }> {
     const result = await this.prisma.trend.deleteMany();
     return { count: result.count };

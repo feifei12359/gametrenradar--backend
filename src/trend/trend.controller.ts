@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { ResponseMessage } from '../common/utils/response-message.decorator';
 import { TrendService } from './trend.service';
 
@@ -22,5 +22,11 @@ export class TrendController {
   @ResponseMessage('all trends fetched')
   getAll() {
     return this.trendService.getAll();
+  }
+
+  @Get('top')
+  @ResponseMessage('top trends fetched')
+  getTop(@Query('limit') limit?: string) {
+    return this.trendService.getTop(limit ? Number(limit) : undefined);
   }
 }
