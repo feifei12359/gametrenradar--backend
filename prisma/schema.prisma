@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trend {
+  id         String   @id @default(cuid())
+  keyword    String
+  stage      String
+  score      Float
+  source     String?
+  region     String?
+  aiInsight  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([stage, score(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+}
+
+model NewWord {
+  id          String   @id @default(cuid())
+  keyword     String
+  source      String?
+  firstSeenAt DateTime @default(now())
+  score       Float
+  region      String?
+  status      String?  @default("new")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([firstSeenAt(sort: Desc)])
+  @@index([status])
+  @@unique([keyword, source])
+}
+
+model JobRun {
+  id        String   @id @default(cuid())
+  type      String
+  status    String
+  summary   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+}
