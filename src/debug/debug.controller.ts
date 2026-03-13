@@ -1,5 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 
+console.log('DEBUG_CONTROLLER_VERSION=2026-03-13-youtube-test-1');
+
 @Controller('debug')
 export class DebugController {
   @Get('routes')
