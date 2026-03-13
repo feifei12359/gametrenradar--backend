@@ -9,6 +9,11 @@ export class DebugController {
 
   @Get('youtube-test')
   youtubeTest() {
-    return { ok: true, route: 'youtube-test' };
+    return {
+      ok: true,
+      route: 'youtube-test',
+      controller: 'DebugController',
+      timestamp: new Date().toISOString(),
+    };
   }
 }
