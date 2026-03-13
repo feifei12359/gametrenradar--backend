@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
-console.log('APP_BUILD_MARK=2026-03-13-railway-check-1');
+console.log('APP_BUILD_MARK=2026-03-13-railway-check-2');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
