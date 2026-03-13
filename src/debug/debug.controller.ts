@@ -1,8 +1,11 @@
-import { Controller, Get, Req } from '@nestjs/common';
+import { Controller, Get, Query, Req } from '@nestjs/common';
 import { Request } from 'express';
+import { YoutubeService } from '../youtube/youtube.service';
 
 @Controller('debug')
 export class DebugController {
+  constructor(private readonly youtubeService: YoutubeService) {}
+
   @Get('routes')
   getRoutes(@Req() req: Request) {
     const app: any = req.app;
@@ -32,5 +35,13 @@ export class DebugController {
       count: routes.length,
       routes,
     };
+  }
+
+  @Get('youtube-test')
+  youtubeTest(
+    @Query('region') region: string = 'US',
+    @Query('q') query: string = 'roblox new game',
+  ) {
+    return this.youtubeService.debugYoutubeSearch(region, query, 3);
   }
 }
