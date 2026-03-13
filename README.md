@@ -1,37 +1,123 @@
-# GameTrend Radar Backend
+# Early Roblox Game Discovery System
 
-后端API服务，部署到Railway平台。
+NestJS + Prisma backend for discovering early-stage Roblox game keywords before they fully explode.
 
-## 功能特性
+## What Changed
 
-- 🎮 游戏数据抓取（itch.io、CrazyGames）
-- 📊 趋势分析和评分系统
-- ⏰ 定时任务（每日自动检测）
-- 🔄 实时数据更新
+The backend is now optimized for:
 
-## 部署到Railway
+- `NEW`: first seen within 72 hours and still low-player
+- `EARLY`: accelerating mentions with low Roblox player count
+- `EXPLODING`: already validated breakout terms
 
-1. 在Railway官网创建新项目
-2. 连接GitHub仓库
-3. 选择此backend目录作为部署目录
-4. Railway会自动检测并部署
+The ranking logic now prioritizes:
 
-## 环境变量
+- `newness_score`
+- `acceleration_score`
+- `validation_score`
 
-无需额外配置环境变量，使用内存存储。
+instead of pure aggregate heat.
 
-## API端点
+## Signal Sources
 
-- `GET /api/games` - 获取游戏列表
-- `POST /api/daily-job` - 执行完整检测
-- `POST /api/games/seed` - 添加示例数据
+1. YouTube discovery crawl
+2. Roblox validation
+3. Google Trends validation
 
-## 本地开发
+YouTube is the primary discovery source. Roblox and Trends are validation layers.
+
+## Supported Regions
+
+- `US`
+- `CA`
+- `UK`
+- `AU`
+- `NZ`
+- `DE`
+- `NL`
+- `SE`
+- `NO`
+- `DK`
+
+Default region is `US`.
+
+## Data Model
+
+New core tables:
+
+- `keywords`
+- `keyword_aliases`
+- `youtube_signals`
+- `roblox_validations`
+- `trends_validations`
+- `keyword_scores`
+- `historical_keyword_stats`
+- `generic_keyword_samples`
+
+Legacy tables `Trend` and `NewWord` were kept in Prisma for compatibility with old files.
+
+## Environment Variables
+
+- `DATABASE_URL`: PostgreSQL connection string
+- `YOUTUBE_API_KEY`: YouTube Data API v3 key
+- `ROBLOX_VALIDATION_MODE`: set to `live` to use Roblox API provider, otherwise mock provider is used
+- `PORT`: optional server port
+
+## Install
 
 ```bash
-cd backend
 npm install
-npm run dev
+npx prisma generate
+npx prisma db push
+npm run build
 ```
 
-API将在 http://localhost:4000 运行
+## Run
+
+```bash
+npm run start
+```
+
+## Main APIs
+
+- `GET /api/discovery/new?region=US`
+- `GET /api/discovery/early?region=US`
+- `GET /api/discovery/exploding?region=US`
+- `GET /api/discovery/keyword/:id`
+- `GET /api/discovery/regions/summary`
+- `GET /api/discovery/debug/generic-keywords?region=US`
+- `POST /api/discovery/run?region=US`
+
+## Cron Jobs
+
+- `youtube-region-crawl.job.ts`: every 6 hours
+- `keyword-score-recompute.job.ts`: every 4 hours
+- `keyword-stage-refresh.job.ts`: every 8 hours
+
+## Frontend Integration Notes
+
+The frontend repository is not present in this workspace. The backend now exposes region-aware discovery endpoints intended for:
+
+- Region filter
+- Stage filter
+- Time window filter
+- Keyword detail view
+
+Recommended frontend entry state:
+
+- region = `US`
+- stage = `NEW`
+- window = `72h`
+
+## Key Files
+
+- `prisma/schema.prisma`
+- `src/modules/discovery/discovery.controller.ts`
+- `src/modules/discovery/discovery.service.ts`
+- `src/services/discovery-pipeline.service.ts`
+- `src/services/keyword-extraction.service.ts`
+- `src/services/keyword-scoring.service.ts`
+- `src/services/youtube-crawler.service.ts`
+- `src/services/roblox-validation.service.ts`
+- `src/services/trends-validation.service.ts`
+- `src/modules/keywords/keyword.repository.ts`

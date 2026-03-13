@@ -1,33 +1,11 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from './prisma/prisma.module';
 import { HealthController } from './health/health.controller';
-import { TrendController } from './controllers/trend.controller';
-import { DailyJobController } from './controllers/daily-job.controller';
-import { SystemController } from './controllers/system.controller';
-import { DebugController } from './debug/debug.controller';
-import { TokenService } from './services/token.service';
-import { TrendService } from './services/trend.service';
-import { DailyJobService } from './jobs/daily-job.service';
-import { YoutubeService } from './youtube/youtube.service';
-import { GoogleTrendsService } from './services/google-trends.service';
-import { AIScoreService } from './services/ai-score.service';
+import { DiscoveryModule } from './modules/discovery/discovery.module';
+import { KeywordsModule } from './modules/keywords/keywords.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [PrismaModule],
-  controllers: [
-    HealthController,
-    TrendController,
-    DailyJobController,
-    SystemController,
-    DebugController,
-  ],
-  providers: [
-    TokenService,
-    TrendService,
-    DailyJobService,
-    YoutubeService,
-    GoogleTrendsService,
-    AIScoreService
-  ],
+  imports: [PrismaModule, KeywordsModule, DiscoveryModule],
+  controllers: [HealthController],
 })
-export class AppModule { }
+export class AppModule {}

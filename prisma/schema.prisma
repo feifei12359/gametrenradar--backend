@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,6 +5,34 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum RegionCode {
+  GLOBAL
+  US
+  CA
+  UK
+  AU
+  NZ
+  DE
+  NL
+  SE
+  NO
+  DK
+}
+
+enum KeywordStage {
+  NEW
+  EARLY
+  EXPLODING
+  FILTERED
+}
+
+enum SignalSource {
+  YOUTUBE
+  ROBLOX
+  TRENDS
+  SYSTEM
 }
 
 model Trend {
@@ -31,4 +56,155 @@ model NewWord {
   total_count    Int
   first_seen_at  DateTime
   created_at     DateTime @default(now())
+}
+
+model Keyword {
+  id                   String               @id @default(cuid())
+  canonical_name       String
+  display_name         String
+  first_seen_at        DateTime
+  last_seen_at         DateTime
+  region               RegionCode
+  signal_count         Int                  @default(0)
+  youtube_signal_count Int                  @default(0)
+  roblox_signal_count  Int                  @default(0)
+  trends_signal_count  Int                  @default(0)
+  is_generic           Boolean              @default(false)
+  stage                KeywordStage         @default(NEW)
+  competition_score    Float                @default(50)
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @updatedAt
+  aliases              KeywordAlias[]
+  youtube_signals      YoutubeSignal[]
+  roblox_validations   RobloxValidation[]
+  trends_validations   TrendsValidation[]
+  keyword_scores       KeywordScore[]
+
+  @@unique([canonical_name, region])
+  @@index([region, stage])
+  @@index([first_seen_at])
+  @@map("keywords")
+}
+
+model KeywordAlias {
+  id         String       @id @default(cuid())
+  keyword_id String
+  raw_text   String
+  source     SignalSource
+  created_at DateTime     @default(now())
+  keyword    Keyword      @relation(fields: [keyword_id], references: [id], onDelete: Cascade)
+
+  @@unique([keyword_id, raw_text])
+  @@index([raw_text])
+  @@map("keyword_aliases")
+}
+
+model YoutubeSignal {
+  id            String      @id @default(cuid())
+  keyword_id    String?
+  region        RegionCode
+  video_id      String
+  title         String
+  description   String?
+  channel_title String
+  thumbnail_url String?
+  published_at  DateTime
+  fetched_at    DateTime    @default(now())
+  view_count    Int         @default(0)
+  like_count    Int         @default(0)
+  comment_count Int         @default(0)
+  query_term    String
+  keyword_raw   String
+  keyword       Keyword?    @relation(fields: [keyword_id], references: [id], onDelete: SetNull)
+
+  @@unique([region, video_id, keyword_raw, query_term])
+  @@index([keyword_id, published_at])
+  @@index([region, published_at])
+  @@map("youtube_signals")
+}
+
+model RobloxValidation {
+  id             String      @id @default(cuid())
+  keyword_id     String
+  region         RegionCode
+  roblox_game_id String?
+  game_name      String
+  players        Int?
+  favorites      Int?
+  visits         Int?
+  validated_at   DateTime    @default(now())
+  keyword        Keyword     @relation(fields: [keyword_id], references: [id], onDelete: Cascade)
+
+  @@index([keyword_id, validated_at])
+  @@index([region, validated_at])
+  @@map("roblox_validations")
+}
+
+model TrendsValidation {
+  id            String      @id @default(cuid())
+  keyword_id    String
+  region        RegionCode
+  score         Float
+  source_window String
+  validated_at  DateTime    @default(now())
+  keyword       Keyword     @relation(fields: [keyword_id], references: [id], onDelete: Cascade)
+
+  @@index([keyword_id, validated_at])
+  @@index([region, validated_at])
+  @@map("trends_validations")
+}
+
+model KeywordScore {
+  id                  String       @id @default(cuid())
+  keyword_id          String
+  region              RegionCode
+  newness_score       Float
+  acceleration_score  Float
+  validation_score    Float
+  trend_score         Float
+  opportunity_score   Float
+  competition_score   Float        @default(50)
+  stage               KeywordStage
+  calculated_at       DateTime     @default(now())
+  mentions_last_24h   Int          @default(0)
+  mentions_prev_24h   Int          @default(0)
+  youtube_views_24h   Int          @default(0)
+  youtube_video_count Int          @default(0)
+  keyword             Keyword      @relation(fields: [keyword_id], references: [id], onDelete: Cascade)
+
+  @@index([keyword_id, calculated_at])
+  @@index([region, stage, trend_score])
+  @@map("keyword_scores")
+}
+
+model HistoricalKeywordStat {
+  id                String     @id @default(cuid())
+  canonical_name    String
+  region            RegionCode
+  first_seen_at     DateTime
+  last_seen_at      DateTime
+  total_mentions_7d Int        @default(0)
+  total_mentions_30d Int       @default(0)
+  total_mentions_90d Int       @default(0)
+  total_regions     Int        @default(0)
+  is_legacy_keyword Boolean    @default(false)
+  updated_at        DateTime   @updatedAt
+
+  @@unique([canonical_name, region])
+  @@index([region, is_legacy_keyword])
+  @@map("historical_keyword_stats")
+}
+
+model GenericKeywordSample {
+  id             String      @id @default(cuid())
+  region         RegionCode
+  raw_text       String
+  normalized_text String
+  reason         String
+  source_title   String
+  query_term     String
+  created_at     DateTime    @default(now())
+
+  @@index([region, created_at])
+  @@map("generic_keyword_samples")
 }
