@@ -54,7 +54,7 @@ export class NewWordsService {
 
   async getAll(): Promise<NewWordApiView[]> {
     const items = await this.prisma.newWord.findMany({
-      orderBy: { firstSeenAt: 'desc' },
+      orderBy: { lastSeenAt: 'desc' },
     });
 
     return items.map((item: NewWordRecord) => this.toApiView(item));
@@ -84,7 +84,7 @@ export class NewWordsService {
             this.keywordNormalizerService.normalizeKeyword(item.keyword)?.compareKey ??
             item.keyword.trim().toLowerCase();
 
-          await (tx as any).keywordEvent.create({
+          await tx.keywordEvent.create({
             data: {
               keyword: item.keyword,
               normalizedKeyword,
@@ -249,7 +249,9 @@ export class NewWordsService {
       ...item,
       token: item.keyword,
       novelty_score: Number((item.score / 100).toFixed(2)),
+      // Temporary placeholder, not true event-stream statistics.
       recent_count: Math.max(1, Math.round(item.score / 10)),
+      // Temporary placeholder, not true event-stream statistics.
       total_count: Math.max(3, Math.round(item.score / 6)),
       platforms: item.source ?? 'youtube',
       first_seen_at: item.firstSeenAt,

@@ -156,13 +156,16 @@ export class TrendService {
     await this.prisma.trend.deleteMany();
 
     const discoverGames = await this.robloxDiscoverService.fetchDiscoverGames();
-    const discoverPool = discoverGames.map((item) => item.normalizedTitle);
+    const discoverExactSet = new Set(discoverGames.map((item) => item.normalizedTitle));
+    const discoverList = [...discoverExactSet];
     const robloxSearchCache = new Map<
       string,
       Promise<{ exists: boolean; title?: string; normalizedTitle?: string }>
     >();
     const trendCreateInputs = await Promise.all(
-      newWords.map((item) => this.buildTrendCreateInput(item, discoverPool, robloxSearchCache)),
+      newWords.map((item) =>
+        this.buildTrendCreateInput(item, discoverExactSet, discoverList, robloxSearchCache),
+      ),
     );
 
     const createdTrends = await this.prisma.$transaction(
@@ -181,7 +184,8 @@ export class TrendService {
 
   private async buildTrendCreateInput(
     item: NewWordForTrend,
-    discoverPool: string[],
+    discoverExactSet: Set<string>,
+    discoverList: string[],
     robloxSearchCache: Map<
       string,
       Promise<{ exists: boolean; title?: string; normalizedTitle?: string }>
@@ -207,7 +211,7 @@ export class TrendService {
       counts.current24hCount,
       counts.previous24hCount,
     );
-    const discoverMatch = this.checkDiscoverMatch(item.keyword, discoverPool);
+    const discoverMatch = this.checkDiscoverMatch(item.keyword, discoverExactSet, discoverList);
     const type = this.detectGameType(item.keyword);
     const robloxExists = robloxSearchResult.exists;
     const scoreBreakdown = this.calculateTrendScore({
@@ -267,7 +271,7 @@ export class TrendService {
     );
 
     const [current24hCount, previous24hCount, totalCount] = await this.prisma.$transaction([
-      (this.prisma as any).keywordEvent.count({
+      this.prisma.keywordEvent.count({
         where: {
           normalizedKeyword,
           seenAt: {
@@ -275,7 +279,7 @@ export class TrendService {
           },
         },
       }),
-      (this.prisma as any).keywordEvent.count({
+      this.prisma.keywordEvent.count({
         where: {
           normalizedKeyword,
           seenAt: {
@@ -284,7 +288,7 @@ export class TrendService {
           },
         },
       }),
-      (this.prisma as any).keywordEvent.count({
+      this.prisma.keywordEvent.count({
         where: {
           normalizedKeyword,
         },
@@ -317,7 +321,7 @@ export class TrendService {
     const normalizedKeyword = this.normalizeKeyword(keyword);
     const now = Date.now();
     const [count24, count48, count72] = await this.prisma.$transaction([
-      (this.prisma as any).keywordEvent.count({
+      this.prisma.keywordEvent.count({
         where: {
           normalizedKeyword,
           seenAt: {
@@ -325,7 +329,7 @@ export class TrendService {
           },
         },
       }),
-      (this.prisma as any).keywordEvent.count({
+      this.prisma.keywordEvent.count({
         where: {
           normalizedKeyword,
           seenAt: {
@@ -333,7 +337,7 @@ export class TrendService {
           },
         },
       }),
-      (this.prisma as any).keywordEvent.count({
+      this.prisma.keywordEvent.count({
         where: {
           normalizedKeyword,
           seenAt: {
@@ -351,14 +355,18 @@ export class TrendService {
     return Number(freshnessScore.toFixed(2));
   }
 
-  checkDiscoverMatch(keyword: string, discoverPool: string[]): boolean {
+  checkDiscoverMatch(
+    keyword: string,
+    discoverExactSet: Set<string>,
+    discoverList: string[],
+  ): boolean {
     const normalizedKeyword = this.normalizeKeyword(keyword);
 
-    return discoverPool.some((title) => {
-      if (title === normalizedKeyword) {
-        return true;
-      }
+    if (discoverExactSet.has(normalizedKeyword)) {
+      return true;
+    }
 
+    return discoverList.some((title) => {
       return title.includes(normalizedKeyword) || normalizedKeyword.includes(title);
     });
   }
