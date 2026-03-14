@@ -1,23 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { GENERIC_KEYWORDS } from '../config/discovery.config';
+import { KeywordNormalizerService } from './keyword-normalizer.service';
 
 @Injectable()
 export class KeywordFilterService {
   private readonly blacklist = new Set<string>(GENERIC_KEYWORDS);
 
+  constructor(private readonly keywordNormalizerService: KeywordNormalizerService) {}
+
   filterCandidates(candidates: string[]): string[] {
-    const deduped = new Set<string>();
+    const deduped = new Map<string, string>();
 
     for (const rawCandidate of candidates) {
-      const candidate = rawCandidate.trim().replace(/\s+/g, ' ');
-      if (!candidate) {
+      const normalized = this.keywordNormalizerService.normalizeKeyword(rawCandidate);
+      if (!normalized) {
         continue;
       }
 
-      const lower = candidate.toLowerCase();
-      const tokenCount = candidate.split(' ').length;
+      const candidate = normalized.displayKey;
+      const lower = normalized.compareKey;
+      const tokenCount = normalized.tokens.length;
+      const lastToken = normalized.tokens[normalized.tokens.length - 1] ?? '';
 
       if (tokenCount < 2 || tokenCount > 5) {
+        continue;
+      }
+
+      if (lastToken.length < 2) {
         continue;
       }
 
@@ -29,10 +38,10 @@ export class KeywordFilterService {
         continue;
       }
 
-      deduped.add(candidate);
+      deduped.set(lower, candidate);
     }
 
-    return [...deduped];
+    return [...deduped.values()];
   }
 
   private hasMeaningfulPrefix(candidate: string): boolean {
@@ -53,5 +62,29 @@ export class KeywordFilterService {
 
     const meaningfulTokens = tokens.filter((token) => !this.blacklist.has(token));
     return meaningfulTokens.length >= 1;
+  }
+
+  getQualityScoreAdjustment(keyword: string): number {
+    const lower = keyword.toLowerCase();
+    const tokens = lower.split(' ');
+    let adjustment = 0;
+
+    if (tokens.length >= 3) {
+      adjustment += 8;
+    }
+
+    if (tokens.some((token) => this.blacklist.has(token))) {
+      adjustment -= 12;
+    }
+
+    if (lower === 'pet simulator' || lower === 'tap simulator' || lower === 'game tycoon') {
+      adjustment -= 18;
+    }
+
+    if (tokens[0] === 'game' || tokens[0] === 'pet' || tokens[0] === 'tap') {
+      adjustment -= 8;
+    }
+
+    return adjustment;
   }
 }

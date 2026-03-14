@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common
 import { DISCOVERY_CONFIG } from '../config/discovery.config';
 import { KeywordExtractionService } from '../keywords/keyword-extraction.service';
 import { KeywordFilterService } from '../keywords/keyword-filter.service';
+import { KeywordNormalizerService } from '../keywords/keyword-normalizer.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   YoutubeSourceService,
@@ -45,6 +46,7 @@ export class NewWordsService {
     private readonly prisma: PrismaService,
     private readonly youtubeSourceService: YoutubeSourceService,
     private readonly keywordExtractionService: KeywordExtractionService,
+    private readonly keywordNormalizerService: KeywordNormalizerService,
     private readonly keywordFilterService: KeywordFilterService,
   ) {}
 
@@ -137,16 +139,22 @@ export class NewWordsService {
           break;
         }
 
+        const normalized = this.keywordNormalizerService.normalizeKeyword(keyword);
+        if (!normalized) {
+          continue;
+        }
+
         const candidate: CandidateKeyword = {
-          keyword,
+          keyword: normalized.displayKey,
           source: 'youtube',
           region: 'global',
-          score: this.scoreKeyword(keyword, video),
+          score: this.scoreKeyword(normalized.displayKey, video),
         };
 
-        const existing = bestByKeyword.get(candidate.keyword.toLowerCase());
+        const compareKey = normalized.compareKey;
+        const existing = bestByKeyword.get(compareKey);
         if (!existing || candidate.score > existing.score) {
-          bestByKeyword.set(candidate.keyword.toLowerCase(), candidate);
+          bestByKeyword.set(compareKey, candidate);
         }
 
         processedCandidates += 1;
@@ -189,6 +197,8 @@ export class NewWordsService {
     if (video.query.includes('new game')) {
       score += 6;
     }
+
+    score += this.keywordFilterService.getQualityScoreAdjustment(keyword);
 
     const normalized = Math.min(90, Math.max(50, score));
     return normalized;
