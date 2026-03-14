@@ -18,6 +18,15 @@ export class KeywordExtractionService {
     'you',
     'this',
     'video',
+    'is',
+    'am',
+    'are',
+    'was',
+    'were',
+    'unlock',
+    'recently',
+    'live',
+    'viewer',
   ]);
 
   private readonly noiseWords = new Set([
@@ -55,6 +64,7 @@ export class KeywordExtractionService {
     'any',
     'millionaire',
     'research',
+    'mode',
   ]);
 
   private readonly connectorWords = new Set(['in', 'for', 'of', 'with', 'to']);
@@ -66,6 +76,7 @@ export class KeywordExtractionService {
     'obby',
     'defense',
     'rng',
+    'battlegrounds',
   ]);
 
   extractCandidates(title: string): string[] {
@@ -101,7 +112,7 @@ export class KeywordExtractionService {
   private pickBestCandidate(tokens: string[]): string | null {
     const candidates: string[] = [];
 
-    for (let size = 4; size >= 2; size -= 1) {
+    for (let size = 3; size >= 2; size -= 1) {
       for (let index = 0; index <= tokens.length - size; index += 1) {
         const phraseTokens = tokens.slice(index, index + size);
         const normalizedPhrase = this.normalizePhraseByConnector(phraseTokens);
@@ -138,7 +149,7 @@ export class KeywordExtractionService {
   }
 
   private isValidGameNamePhrase(tokens: string[]): boolean {
-    if (tokens.length < 2 || tokens.length > 4) {
+    if (tokens.length < 2 || tokens.length > 3) {
       return false;
     }
 
@@ -149,6 +160,10 @@ export class KeywordExtractionService {
     }
 
     if (lowered.some((token) => this.bannedWords.has(token))) {
+      return false;
+    }
+
+    if (tokens.some((token) => /\d/.test(token))) {
       return false;
     }
 
@@ -178,7 +193,7 @@ export class KeywordExtractionService {
   }
 
   private isTitleLikeToken(token: string): boolean {
-    return /^[A-Z][a-zA-Z0-9]*$/.test(token) || /^\d+[A-Z]?[a-zA-Z0-9]*$/.test(token);
+    return /^[A-Z][a-zA-Z]*$/.test(token);
   }
 
   private toTitleCase(value: string): string {
