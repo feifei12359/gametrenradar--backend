@@ -17,8 +17,11 @@ model Trend {
   region              String?
   aiInsight           String?
   growthRate          Float?
+  acceleration        Float?
   recentCount         Int?
   totalCount          Int?
+  current24hCount     Int?
+  previous24hCount    Int?
   robloxExists        Boolean? @default(false)
   discoverMatch       Boolean? @default(false)
   keywordQualityScore Float?
