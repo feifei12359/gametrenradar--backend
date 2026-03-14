@@ -190,7 +190,7 @@ export class TrendService {
     const normalizedKeyword = this.normalizeKeyword(item.keyword);
     const robloxSearchResultPromise =
       robloxSearchCache.get(normalizedKeyword) ??
-      this.robloxSearchService.searchGame(item.keyword);
+      this.robloxSearchService.searchGame(normalizedKeyword);
 
     if (!robloxSearchCache.has(normalizedKeyword)) {
       robloxSearchCache.set(normalizedKeyword, robloxSearchResultPromise);

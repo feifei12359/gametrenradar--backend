@@ -74,37 +74,56 @@ export class NewWordsService {
         };
       }
 
-      const savedItems = await this.prisma.$transaction(
-        candidates.map((item) =>
-          (() => {
-            const normalizedKeyword = this.keywordNormalizerService.normalizeKeyword(item.keyword);
+      const savedItems = await this.prisma.$transaction(async (tx) => {
+        const results: NewWordRecord[] = [];
 
-            return this.prisma.newWord.upsert({
+        for (const item of candidates) {
+          const normalizedKeyword =
+            this.keywordNormalizerService.normalizeKeyword(item.keyword)?.compareKey ??
+            item.keyword.trim().toLowerCase();
+
+          const existing = await tx.newWord.findFirst({
+            where: {
+              normalizedKeyword,
+              source: item.source,
+            },
+          });
+
+          if (existing) {
+            const updated = await tx.newWord.update({
               where: {
-                keyword_source: {
-                  keyword: item.keyword,
-                  source: item.source,
-                },
+                id: existing.id,
               },
-              update: {
-                normalizedKeyword: normalizedKeyword?.compareKey ?? item.keyword.trim().toLowerCase(),
+              data: {
+                keyword: item.keyword,
+                normalizedKeyword,
                 score: item.score,
                 region: item.region,
                 status: 'analyzed',
                 firstSeenAt: new Date(),
               },
-              create: {
-                keyword: item.keyword,
-                normalizedKeyword: normalizedKeyword?.compareKey ?? item.keyword.trim().toLowerCase(),
-                source: item.source,
-                region: item.region,
-                score: item.score,
-                status: 'analyzed',
-              },
             });
-          })(),
-        ),
-      );
+
+            results.push(updated as NewWordRecord);
+            continue;
+          }
+
+          const created = await tx.newWord.create({
+            data: {
+              keyword: item.keyword,
+              normalizedKeyword,
+              source: item.source,
+              region: item.region,
+              score: item.score,
+              status: 'analyzed',
+            },
+          });
+
+          results.push(created as NewWordRecord);
+        }
+
+        return results;
+      });
 
       return {
         created: savedItems.length,
