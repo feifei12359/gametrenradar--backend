@@ -16,6 +16,9 @@ model Trend {
   source     String?
   region     String?
   aiInsight  String?
+  growthRate Float?
+  recentCount Int?
+  totalCount Int?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
