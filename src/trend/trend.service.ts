@@ -22,8 +22,11 @@ type TrendRecord = {
   region: string | null;
   aiInsight: string | null;
   growthRate?: number | null;
+  acceleration?: number | null;
   recentCount?: number | null;
   totalCount?: number | null;
+  current24hCount?: number | null;
+  previous24hCount?: number | null;
   robloxExists?: boolean | null;
   discoverMatch?: boolean | null;
   keywordQualityScore?: number | null;
@@ -51,6 +54,7 @@ type ScoreBreakdown = {
   robloxExistsScore: number;
   discoverScore: number;
   freshnessScore: number;
+  accelerationScore: number;
   totalScore: number;
 };
 
@@ -179,6 +183,10 @@ export class TrendService {
     ]);
 
     const growthRate = this.calculateGrowthRate(counts.recentCount, counts.totalCount);
+    const acceleration = this.calculateAcceleration(
+      counts.current24hCount,
+      counts.previous24hCount,
+    );
     const discoverMatch = this.checkDiscoverMatch(item.keyword, discoverPool);
     const type = this.detectGameType(item.keyword);
     const robloxExists = robloxSearchResult.exists;
@@ -190,14 +198,14 @@ export class TrendService {
       robloxExists,
       discoverMatch,
       freshnessScore,
+      acceleration,
       type,
     });
     const stage = this.determineStage(
       scoreBreakdown.totalScore,
       growthRate,
+      acceleration,
       counts.recentCount,
-      robloxExists,
-      discoverMatch,
     );
 
     return {
@@ -209,8 +217,11 @@ export class TrendService {
       region: item.region,
       aiInsight: this.buildInsight(item.keyword, stage, growthRate, robloxExists, discoverMatch),
       growthRate,
+      acceleration,
       recentCount: counts.recentCount,
       totalCount: counts.totalCount,
+      current24hCount: counts.current24hCount,
+      previous24hCount: counts.previous24hCount,
       robloxExists,
       discoverMatch,
       keywordQualityScore: scoreBreakdown.keywordQualityScore,
@@ -222,20 +233,33 @@ export class TrendService {
   }
 
   private async getKeywordCounts(keyword: string): Promise<{
+    current24hCount: number;
+    previous24hCount: number;
     recentCount: number;
     totalCount: number;
   }> {
     const normalizedKeyword = this.normalizeKeyword(keyword);
-    const recentWindowStart = new Date(
-      Date.now() - TrendService.RECENT_WINDOW_HOURS * 60 * 60 * 1000,
+    const now = Date.now();
+    const current24hStart = new Date(now - TrendService.RECENT_WINDOW_HOURS * 60 * 60 * 1000);
+    const previous24hStart = new Date(
+      now - TrendService.FRESH_WINDOW_48_HOURS * 60 * 60 * 1000,
     );
 
-    const [recentCount, totalCount] = await this.prisma.$transaction([
+    const [current24hCount, previous24hCount, totalCount] = await this.prisma.$transaction([
       this.prisma.newWord.count({
         where: {
           normalizedKeyword,
           firstSeenAt: {
-            gte: recentWindowStart,
+            gte: current24hStart,
+          },
+        },
+      }),
+      this.prisma.newWord.count({
+        where: {
+          normalizedKeyword,
+          firstSeenAt: {
+            gte: previous24hStart,
+            lt: current24hStart,
           },
         },
       }),
@@ -246,7 +270,12 @@ export class TrendService {
       }),
     ]);
 
-    return { recentCount, totalCount };
+    return {
+      current24hCount,
+      previous24hCount,
+      recentCount: current24hCount,
+      totalCount,
+    };
   }
 
   calculateGrowthRate(recentCount: number, totalCount: number): number {
@@ -255,6 +284,12 @@ export class TrendService {
     }
 
     return Number((recentCount / totalCount).toFixed(4));
+  }
+
+  calculateAcceleration(current24hCount: number, previous24hCount: number): number {
+    const baseline = Math.max(previous24hCount, 1);
+    const acceleration = (current24hCount - previous24hCount) / baseline;
+    return Number(acceleration.toFixed(2));
   }
 
   async calculateFreshnessScore(keyword: string): Promise<number> {
@@ -346,6 +381,7 @@ export class TrendService {
     robloxExists: boolean;
     discoverMatch: boolean;
     freshnessScore: number;
+    acceleration: number;
     type: string | null;
   }): ScoreBreakdown {
     const keywordQualityScore = this.calculateKeywordQualityScore(input.keyword, input.type);
@@ -356,12 +392,14 @@ export class TrendService {
     );
     const robloxExistsScore = input.robloxExists ? 100 : 0;
     const discoverScore = input.discoverMatch ? 100 : 0;
+    const accelerationScore = this.calculateAccelerationScore(input.acceleration);
     const totalScore =
-      keywordQualityScore * 0.25 +
-      growthScore * 0.3 +
+      keywordQualityScore * 0.22 +
+      growthScore * 0.25 +
       robloxExistsScore * 0.15 +
-      discoverScore * 0.2 +
-      input.freshnessScore * 0.1;
+      discoverScore * 0.18 +
+      input.freshnessScore * 0.1 +
+      accelerationScore * 0.1;
 
     return {
       keywordQualityScore,
@@ -369,23 +407,30 @@ export class TrendService {
       robloxExistsScore,
       discoverScore,
       freshnessScore: input.freshnessScore,
+      accelerationScore,
       totalScore: Number(Math.max(0, Math.min(100, totalScore)).toFixed(2)),
     };
+  }
+
+  calculateAccelerationScore(acceleration: number): number {
+    if (acceleration <= 0) {
+      return 0;
+    }
+
+    if (acceleration >= 2) {
+      return 100;
+    }
+
+    return Number(((acceleration / 2) * 100).toFixed(2));
   }
 
   determineStage(
     score: number,
     growthRate: number,
+    acceleration: number,
     recentCount: number,
-    robloxExists: boolean,
-    discoverMatch: boolean,
   ): string {
-    if (
-      score >= 80 &&
-      growthRate >= 0.5 &&
-      recentCount >= 5 &&
-      (robloxExists || discoverMatch)
-    ) {
+    if (score >= 75 && growthRate >= 0.5 && acceleration >= 1.0 && recentCount >= 5) {
       return 'exploding';
     }
 
@@ -437,8 +482,11 @@ export class TrendService {
       ...item,
       type: item.type ?? null,
       growthRate: item.growthRate ?? null,
+      acceleration: item.acceleration ?? 0,
       recentCount: item.recentCount ?? null,
       totalCount: item.totalCount ?? null,
+      current24hCount: item.current24hCount ?? null,
+      previous24hCount: item.previous24hCount ?? null,
       robloxExists: item.robloxExists ?? false,
       discoverMatch: item.discoverMatch ?? false,
       keywordQualityScore: item.keywordQualityScore ?? null,
@@ -450,7 +498,6 @@ export class TrendService {
       growth_rate: item.growthRate ?? 0,
       platform_score: Number((item.score / 100).toFixed(2)),
       ai_score: Number((Math.min(item.score + 5, 100) / 100).toFixed(2)),
-      acceleration: Number((item.score / 120).toFixed(2)),
       platforms: item.source ?? 'youtube',
       first_seen_at: item.createdAt,
     };
