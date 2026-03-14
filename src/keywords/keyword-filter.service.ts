@@ -1,28 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { GENERIC_KEYWORDS } from '../config/discovery.config';
 import { KeywordNormalizerService } from './keyword-normalizer.service';
 
 @Injectable()
 export class KeywordFilterService {
-  private readonly blacklist = new Set<string>(GENERIC_KEYWORDS);
-  private readonly rejectedPrefixTokens = new Set([
-    'play',
-    'playing',
-    'are',
-    'is',
-    'was',
-    'official',
-    'best',
-    'new',
-    'update',
+  private readonly validSuffixTokens = new Set([
+    'tycoon',
+    'simulator',
+    'obby',
+    'survival',
+    'defense',
+    'rng',
+    'battlegrounds',
   ]);
-  private readonly multilingualStopwords = new Set([
-    'apakah',
-    'cara',
-    'como',
-    'para',
-  ]);
-  private readonly trailingSeoTokens = new Set([
+  private readonly seoTokens = new Set([
     'viral',
     'shorts',
     'short',
@@ -33,42 +23,25 @@ export class KeywordFilterService {
     'live',
     'official',
   ]);
-  private readonly validSuffixTokens = new Set([
-    'tycoon',
-    'simulator',
-    'obby',
-    'survival',
-    'defense',
-    'rng',
-    'battlegrounds',
-  ]);
-  private readonly weekdayTokens = new Set([
-    'mon',
-    'monday',
-    'tue',
-    'tuesday',
-    'wed',
-    'wednesday',
-    'thu',
-    'thursday',
-    'fri',
-    'friday',
-    'sat',
-    'saturday',
-    'sun',
-    'sunday',
-  ]);
-  private readonly prefixTokens = new Set([
-    'here',
-    'new',
-    'best',
-    'top',
+  private readonly verbPrefixTokens = new Set([
+    'play',
     'playing',
+    'watch',
     'trying',
-    'watching',
-    'latest',
-    'this',
+    'make',
+    'making',
+    'build',
+    'building',
+    'test',
+    'testing',
   ]);
+  private readonly multilingualPrefixTokens = new Set([
+    'apakah',
+    'cara',
+    'como',
+    'para',
+  ]);
+  private readonly stopwords = new Set(['a', 'the', 'my', 'your', 'our', 'we', 'you', 'i']);
 
   constructor(private readonly keywordNormalizerService: KeywordNormalizerService) {}
 
@@ -76,53 +49,18 @@ export class KeywordFilterService {
     const deduped = new Map<string, string>();
 
     for (const rawCandidate of candidates) {
-      if (this.shouldRejectByPrefix(rawCandidate)) {
+      const filteredKeyword = this.filterKeyword(rawCandidate);
+      if (!filteredKeyword) {
         continue;
       }
 
-      const cleanedPrefix = this.cleanKeywordPrefix(rawCandidate);
-      if (!cleanedPrefix) {
-        continue;
-      }
-
-      const cleanedSeoSuffix = this.cleanTrailingSeoToken(cleanedPrefix);
-      if (!cleanedSeoSuffix) {
-        continue;
-      }
-
-      const normalized = this.keywordNormalizerService.normalizeKeyword(cleanedSeoSuffix);
+      const normalized = this.keywordNormalizerService.normalizeKeyword(filteredKeyword);
       if (!normalized) {
         continue;
       }
 
-      const candidate = normalized.displayKey;
+      const candidate = normalized.compareKey;
       const lower = normalized.compareKey;
-      const tokenCount = normalized.tokens.length;
-      const lastToken = normalized.tokens[normalized.tokens.length - 1] ?? '';
-
-      if (tokenCount < 2 || tokenCount > 3) {
-        continue;
-      }
-
-      if (lastToken.length < 2) {
-        continue;
-      }
-
-      if (this.shouldRejectTruncatedKeyword(normalized.tokens)) {
-        continue;
-      }
-
-      if (!this.hasValidSuffix(normalized.tokens)) {
-        continue;
-      }
-
-      if (this.blacklist.has(lower)) {
-        continue;
-      }
-
-      if (!this.hasMeaningfulPrefix(candidate)) {
-        continue;
-      }
 
       deduped.set(lower, candidate);
     }
@@ -130,126 +68,48 @@ export class KeywordFilterService {
     return [...deduped.values()];
   }
 
-  shouldRejectByPrefix(keyword: string): boolean {
-    const tokens = keyword
-      .trim()
+  filterKeyword(input: string): string | null {
+    const keyword = this.normalize(input);
+    let tokens = keyword.split(' ').filter(Boolean);
+
+    if (tokens.length < 2) {
+      return null;
+    }
+
+    if (this.multilingualPrefixTokens.has(tokens[0])) {
+      return null;
+    }
+
+    if (this.verbPrefixTokens.has(tokens[0])) {
+      return null;
+    }
+
+    if (this.stopwords.has(tokens[0])) {
+      return null;
+    }
+
+    if (this.seoTokens.has(tokens[tokens.length - 1])) {
+      tokens = tokens.slice(0, -1);
+    }
+
+    if (tokens.length < 2 || tokens.length > 3) {
+      return null;
+    }
+
+    const suffix = tokens[tokens.length - 1];
+    if (!this.validSuffixTokens.has(suffix)) {
+      return null;
+    }
+
+    return tokens.join(' ');
+  }
+
+  private normalize(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
       .replace(/\s+/g, ' ')
-      .split(' ')
-      .filter(Boolean);
-
-    if (!tokens.length) {
-      return true;
-    }
-
-    const firstToken = tokens[0].toLowerCase();
-    return (
-      this.rejectedPrefixTokens.has(firstToken) ||
-      this.multilingualStopwords.has(firstToken) ||
-      tokens[0].length < 3
-    );
-  }
-
-  cleanKeywordPrefix(keyword: string): string | null {
-    const tokens = keyword
-      .trim()
-      .replace(/\s+/g, ' ')
-      .split(' ')
-      .filter(Boolean);
-
-    if (!tokens.length) {
-      return null;
-    }
-
-    const normalizedFirstToken = tokens[0].toLowerCase();
-    const cleanedTokens = this.prefixTokens.has(normalizedFirstToken) ? tokens.slice(1) : tokens;
-
-    if (cleanedTokens.length < 2) {
-      return null;
-    }
-
-    return cleanedTokens.join(' ');
-  }
-
-  cleanTrailingSeoToken(keyword: string): string | null {
-    const tokens = keyword
-      .trim()
-      .replace(/\s+/g, ' ')
-      .split(' ')
-      .filter(Boolean);
-
-    if (!tokens.length) {
-      return null;
-    }
-
-    const lastToken = tokens[tokens.length - 1].toLowerCase();
-    const cleanedTokens = this.trailingSeoTokens.has(lastToken)
-      ? tokens.slice(0, -1)
-      : tokens;
-
-    if (cleanedTokens.length < 2 || cleanedTokens.length > 3) {
-      return null;
-    }
-
-    return cleanedTokens.join(' ');
-  }
-
-  hasValidSuffix(tokens: string[]): boolean {
-    if (!tokens.length) {
-      return false;
-    }
-
-    const lastToken = tokens[tokens.length - 1].toLowerCase();
-    return this.validSuffixTokens.has(lastToken);
-  }
-
-  private hasMeaningfulPrefix(candidate: string): boolean {
-    const tokens = candidate.toLowerCase().split(' ');
-
-    if (tokens.every((token) => this.blacklist.has(token))) {
-      return false;
-    }
-
-    const phraseWithoutTrailingNoise = [...tokens];
-    while (phraseWithoutTrailingNoise.length > 1) {
-      const joined = phraseWithoutTrailingNoise.join(' ');
-      if (!this.blacklist.has(joined)) {
-        break;
-      }
-      phraseWithoutTrailingNoise.pop();
-    }
-
-    const meaningfulTokens = tokens.filter((token) => !this.blacklist.has(token));
-    return meaningfulTokens.length >= 1;
-  }
-
-  isWeekdayToken(token: string): boolean {
-    return this.weekdayTokens.has(token.toLowerCase());
-  }
-
-  hasInvalidShortToken(tokens: string[]): boolean {
-    return tokens.some((token) => token.length < 2);
-  }
-
-  shouldRejectTruncatedKeyword(tokens: string[]): boolean {
-    if (!tokens.length) {
-      return true;
-    }
-
-    const normalizedTokens = tokens.map((token) => token.toLowerCase());
-
-    if (this.isWeekdayToken(normalizedTokens[0])) {
-      return true;
-    }
-
-    if (this.hasInvalidShortToken(tokens)) {
-      return true;
-    }
-
-    if (tokens[0].length < 3) {
-      return true;
-    }
-
-    return false;
+      .trim();
   }
 
   getQualityScoreAdjustment(keyword: string): number {
@@ -261,8 +121,8 @@ export class KeywordFilterService {
       adjustment += 8;
     }
 
-    if (tokens.some((token) => this.blacklist.has(token))) {
-      adjustment -= 12;
+    if (!this.validSuffixTokens.has(tokens[tokens.length - 1] ?? '')) {
+      adjustment -= 20;
     }
 
     if (lower === 'pet simulator' || lower === 'tap simulator' || lower === 'game tycoon') {
