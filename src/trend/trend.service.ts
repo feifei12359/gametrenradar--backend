@@ -83,7 +83,9 @@ export class TrendService {
     'rng',
     'battlegrounds',
   ]);
-  private readonly genericKeywords = new Set<string>(GENERIC_KEYWORDS as readonly string[]);
+  private readonly genericKeywords = new Set<string>(
+    (GENERIC_KEYWORDS as readonly string[]).filter((keyword) => !this.validSuffixes.has(keyword)),
+  );
 
   private readonly genericPenaltyKeywords = new Set([
     'pet simulator',
@@ -153,9 +155,13 @@ export class TrendService {
     await this.prisma.trend.deleteMany();
 
     const discoverGames = await this.robloxDiscoverService.fetchDiscoverGames();
-    const discoverPool = new Set(discoverGames.map((item) => item.normalizedTitle));
+    const discoverPool = discoverGames.map((item) => item.normalizedTitle);
+    const robloxSearchCache = new Map<
+      string,
+      Promise<{ exists: boolean; title?: string; normalizedTitle?: string }>
+    >();
     const trendCreateInputs = await Promise.all(
-      newWords.map((item) => this.buildTrendCreateInput(item, discoverPool)),
+      newWords.map((item) => this.buildTrendCreateInput(item, discoverPool, robloxSearchCache)),
     );
 
     const createdTrends = await this.prisma.$transaction(
@@ -174,12 +180,25 @@ export class TrendService {
 
   private async buildTrendCreateInput(
     item: NewWordForTrend,
-    discoverPool: Set<string>,
+    discoverPool: string[],
+    robloxSearchCache: Map<
+      string,
+      Promise<{ exists: boolean; title?: string; normalizedTitle?: string }>
+    >,
   ) {
+    const normalizedKeyword = this.normalizeKeyword(item.keyword);
+    const robloxSearchResultPromise =
+      robloxSearchCache.get(normalizedKeyword) ??
+      this.robloxSearchService.searchGame(item.keyword);
+
+    if (!robloxSearchCache.has(normalizedKeyword)) {
+      robloxSearchCache.set(normalizedKeyword, robloxSearchResultPromise);
+    }
+
     const [counts, freshnessScore, robloxSearchResult] = await Promise.all([
       this.getKeywordCounts(item.keyword),
       this.calculateFreshnessScore(item.keyword),
-      this.robloxSearchService.searchGame(item.keyword),
+      robloxSearchResultPromise,
     ]);
 
     const growthRate = this.calculateGrowthRate(counts.recentCount, counts.totalCount);
@@ -330,8 +349,16 @@ export class TrendService {
     return Number(freshnessScore.toFixed(2));
   }
 
-  checkDiscoverMatch(keyword: string, discoverPool: Set<string>): boolean {
-    return discoverPool.has(this.normalizeKeyword(keyword));
+  checkDiscoverMatch(keyword: string, discoverPool: string[]): boolean {
+    const normalizedKeyword = this.normalizeKeyword(keyword);
+
+    return discoverPool.some((title) => {
+      if (title === normalizedKeyword) {
+        return true;
+      }
+
+      return title.includes(normalizedKeyword) || normalizedKeyword.includes(title);
+    });
   }
 
   calculateKeywordQualityScore(keyword: string, type: string | null): number {
@@ -449,18 +476,22 @@ export class TrendService {
     discoverMatch: boolean,
   ): string {
     const growthPercent = Math.round(growthRate * 100);
-    const robloxSignal = robloxExists ? 'Roblox search confirms it exists.' : 'Roblox search has no strong match yet.';
-    const discoverSignal = discoverMatch ? 'It is visible in Roblox Discover.' : 'It is not matched in Roblox Discover.';
+    const robloxSignal = robloxExists
+      ? 'Roblox 搜索已确认该游戏存在。'
+      : 'Roblox 搜索暂未确认该游戏。';
+    const discoverSignal = discoverMatch
+      ? '该关键词已命中 Roblox Discover。'
+      : '该关键词暂未命中 Roblox Discover。';
 
     if (stage === 'exploding') {
-      return `${keyword} is showing strong breakout momentum with ${growthPercent}% growth concentration. ${robloxSignal} ${discoverSignal}`;
+      return `${keyword} 当前呈现明显爆发趋势，近 24 小时增长占比约 ${growthPercent}%。${robloxSignal}${discoverSignal}`;
     }
 
     if (stage === 'early') {
-      return `${keyword} is emerging with ${growthPercent}% growth concentration. ${robloxSignal} ${discoverSignal}`;
+      return `${keyword} 当前处于早期增长阶段，近 24 小时增长占比约 ${growthPercent}%。${robloxSignal}${discoverSignal}`;
     }
 
-    return `${keyword} is currently a baseline signal with ${growthPercent}% growth concentration. ${robloxSignal} ${discoverSignal}`;
+    return `${keyword} 当前仍属于基础观察信号，近 24 小时增长占比约 ${growthPercent}%。${robloxSignal}${discoverSignal}`;
   }
 
   detectGameType(keyword: string): string | null {
