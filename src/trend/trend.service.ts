@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { normalizeKeyword } from '../common/utils/normalize-keyword.util';
-import { DISCOVERY_CONFIG } from '../config/discovery.config';
+import { DISCOVERY_CONFIG, GENERIC_KEYWORDS } from '../config/discovery.config';
 import { PrismaService } from '../prisma/prisma.service';
 import { RobloxDiscoverService } from '../sources/roblox/roblox-discover.service';
+import { RobloxSearchService } from '../sources/roblox/roblox-search.service';
 
 type NewWordForTrend = {
   keyword: string;
@@ -23,6 +24,13 @@ type TrendRecord = {
   growthRate?: number | null;
   recentCount?: number | null;
   totalCount?: number | null;
+  robloxExists?: boolean | null;
+  discoverMatch?: boolean | null;
+  keywordQualityScore?: number | null;
+  growthScore?: number | null;
+  robloxExistsScore?: number | null;
+  discoverScore?: number | null;
+  freshnessScore?: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -37,10 +45,21 @@ type TrendApiView = TrendRecord & {
   first_seen_at: Date;
 };
 
+type ScoreBreakdown = {
+  keywordQualityScore: number;
+  growthScore: number;
+  robloxExistsScore: number;
+  discoverScore: number;
+  freshnessScore: number;
+  totalScore: number;
+};
+
 @Injectable()
 export class TrendService {
   private static readonly RECENT_WINDOW_HOURS = 24;
-  private readonly logger = new Logger(TrendService.name);
+  private static readonly FRESH_WINDOW_48_HOURS = 48;
+  private static readonly FRESH_WINDOW_72_HOURS = 72;
+
   private readonly gameTypes = new Set([
     'tycoon',
     'simulator',
@@ -51,9 +70,27 @@ export class TrendService {
     'battlegrounds',
   ]);
 
+  private readonly validSuffixes = new Set([
+    'tycoon',
+    'simulator',
+    'obby',
+    'survival',
+    'defense',
+    'rng',
+    'battlegrounds',
+  ]);
+  private readonly genericKeywords = new Set<string>(GENERIC_KEYWORDS as readonly string[]);
+
+  private readonly genericPenaltyKeywords = new Set([
+    'pet simulator',
+    'tap simulator',
+    'game tycoon',
+  ]);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly robloxDiscoverService: RobloxDiscoverService,
+    private readonly robloxSearchService: RobloxSearchService,
   ) {}
 
   async getExploding(): Promise<TrendApiView[]> {
@@ -83,9 +120,10 @@ export class TrendService {
   }
 
   async getTop(limit?: number): Promise<TrendApiView[]> {
-    const normalizedLimit = typeof limit === 'number' && Number.isFinite(limit)
-      ? Math.min(Math.max(limit, 1), DISCOVERY_CONFIG.filtering.maxAcceptedNewWords)
-      : DISCOVERY_CONFIG.filtering.dashboardTopLimit;
+    const normalizedLimit =
+      typeof limit === 'number' && Number.isFinite(limit)
+        ? Math.min(Math.max(limit, 1), DISCOVERY_CONFIG.filtering.maxAcceptedNewWords)
+        : DISCOVERY_CONFIG.filtering.dashboardTopLimit;
 
     const trends = await this.prisma.trend.findMany({
       orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
@@ -134,32 +172,52 @@ export class TrendService {
     item: NewWordForTrend,
     discoverPool: Set<string>,
   ) {
-    const [{ recentCount, totalCount }, existsOnRoblox] = await Promise.all([
+    const [counts, freshnessScore, robloxSearchResult] = await Promise.all([
       this.getKeywordCounts(item.keyword),
-      this.checkRobloxGameExists(item.keyword),
+      this.calculateFreshnessScore(item.keyword),
+      this.robloxSearchService.searchGame(item.keyword),
     ]);
-    const growthRate = this.calculateGrowthRate(recentCount, totalCount);
+
+    const growthRate = this.calculateGrowthRate(counts.recentCount, counts.totalCount);
     const discoverMatch = this.checkDiscoverMatch(item.keyword, discoverPool);
-    const score = this.calculateTrendScore(
-      item.score,
+    const type = this.detectGameType(item.keyword);
+    const robloxExists = robloxSearchResult.exists;
+    const scoreBreakdown = this.calculateTrendScore({
+      keyword: item.keyword,
+      recentCount: counts.recentCount,
+      totalCount: counts.totalCount,
       growthRate,
-      existsOnRoblox,
+      robloxExists,
+      discoverMatch,
+      freshnessScore,
+      type,
+    });
+    const stage = this.determineStage(
+      scoreBreakdown.totalScore,
+      growthRate,
+      counts.recentCount,
+      robloxExists,
       discoverMatch,
     );
-    const stage = this.determineStage(growthRate, recentCount, discoverMatch);
-    const type = this.detectGameType(item.keyword);
 
     return {
       keyword: item.keyword,
-      score,
+      score: scoreBreakdown.totalScore,
       stage,
       type,
       source: item.source,
       region: item.region,
-      aiInsight: this.buildInsight(item.keyword, stage, growthRate),
+      aiInsight: this.buildInsight(item.keyword, stage, growthRate, robloxExists, discoverMatch),
       growthRate,
-      recentCount,
-      totalCount,
+      recentCount: counts.recentCount,
+      totalCount: counts.totalCount,
+      robloxExists,
+      discoverMatch,
+      keywordQualityScore: scoreBreakdown.keywordQualityScore,
+      growthScore: scoreBreakdown.growthScore,
+      robloxExistsScore: scoreBreakdown.robloxExistsScore,
+      discoverScore: scoreBreakdown.discoverScore,
+      freshnessScore: scoreBreakdown.freshnessScore,
     };
   }
 
@@ -187,10 +245,7 @@ export class TrendService {
       }),
     ]);
 
-    return {
-      recentCount,
-      totalCount,
-    };
+    return { recentCount, totalCount };
   }
 
   calculateGrowthRate(recentCount: number, totalCount: number): number {
@@ -201,85 +256,164 @@ export class TrendService {
     return Number((recentCount / totalCount).toFixed(4));
   }
 
-  async checkRobloxGameExists(keyword: string): Promise<boolean> {
-    const url = `https://www.roblox.com/search/games?keyword=${encodeURIComponent(keyword)}`;
-
-    try {
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; GameTrendRadar/1.0)',
-          Accept: 'text/html,application/xhtml+xml',
+  async calculateFreshnessScore(keyword: string): Promise<number> {
+    const now = Date.now();
+    const [count24, count48, count72] = await this.prisma.$transaction([
+      this.prisma.newWord.count({
+        where: {
+          keyword,
+          firstSeenAt: {
+            gte: new Date(now - TrendService.RECENT_WINDOW_HOURS * 60 * 60 * 1000),
+          },
         },
-      });
+      }),
+      this.prisma.newWord.count({
+        where: {
+          keyword,
+          firstSeenAt: {
+            gte: new Date(now - TrendService.FRESH_WINDOW_48_HOURS * 60 * 60 * 1000),
+          },
+        },
+      }),
+      this.prisma.newWord.count({
+        where: {
+          keyword,
+          firstSeenAt: {
+            gte: new Date(now - TrendService.FRESH_WINDOW_72_HOURS * 60 * 60 * 1000),
+          },
+        },
+      }),
+    ]);
 
-      if (!response.ok) {
-        this.logger.warn(`Roblox existence check failed for "${keyword}" with ${response.status}`);
-        return false;
-      }
+    const freshnessScore = Math.min(
+      100,
+      count24 * 40 + Math.max(count48 - count24, 0) * 20 + Math.max(count72 - count48, 0) * 10,
+    );
 
-      const html = await response.text();
-      const normalizedHtml = html.toLowerCase();
-      const normalizedKeyword = keyword.trim().toLowerCase();
-
-      return (
-        normalizedHtml.includes('/games/') ||
-        normalizedHtml.includes('game-card') ||
-        normalizedHtml.includes('game-tile') ||
-        normalizedHtml.includes(normalizedKeyword)
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'unknown error';
-      this.logger.warn(`Roblox existence check failed for "${keyword}": ${message}`);
-      return false;
-    }
+    return Number(freshnessScore.toFixed(2));
   }
 
   checkDiscoverMatch(keyword: string, discoverPool: Set<string>): boolean {
     return discoverPool.has(this.normalizeKeyword(keyword));
   }
 
-  calculateTrendScore(
-    baseScore: number,
-    growthRate: number,
-    existsOnRoblox: boolean,
-    discoverMatch: boolean,
-  ): number {
-    const growthScore = growthRate * 100;
-    const robloxExistsScore = existsOnRoblox ? 20 : 0;
-    const discoverScore = discoverMatch ? 100 : 0;
-    const weightedScore =
-      baseScore * 0.4 +
-      growthScore * 0.3 +
-      robloxExistsScore * 0.1 +
-      discoverScore * 0.2;
+  calculateKeywordQualityScore(keyword: string, type: string | null): number {
+    const normalized = this.normalizeKeyword(keyword);
+    const tokens = normalized.split(' ').filter(Boolean);
+    let score = 55;
 
-    return Number(weightedScore.toFixed(2));
+    if (tokens.length >= 3) {
+      score += 15;
+    } else if (tokens.length === 2) {
+      score += 8;
+    }
+
+    if (type && this.validSuffixes.has(type)) {
+      score += 20;
+    }
+
+    if (this.genericPenaltyKeywords.has(normalized)) {
+      score -= 20;
+    }
+
+    if (tokens.some((token) => this.genericKeywords.has(token))) {
+      score -= 10;
+    }
+
+    return Number(Math.max(20, Math.min(100, score)).toFixed(2));
   }
 
-  determineStage(growthRate: number, recentCount: number, discoverMatch: boolean): string {
-    if (discoverMatch && growthRate >= 0.5 && recentCount >= 5) {
+  calculateGrowthScore(recentCount: number, totalCount: number, growthRate: number): number {
+    if (totalCount <= 0) {
+      return 0;
+    }
+
+    const volumeScore = Math.min(100, totalCount * 8);
+    const recentVolumeScore = Math.min(100, recentCount * 12);
+    const rateScore = growthRate * 100;
+    const score = volumeScore * 0.2 + recentVolumeScore * 0.3 + rateScore * 0.5;
+
+    return Number(Math.max(0, Math.min(100, score)).toFixed(2));
+  }
+
+  calculateTrendScore(input: {
+    keyword: string;
+    recentCount: number;
+    totalCount: number;
+    growthRate: number;
+    robloxExists: boolean;
+    discoverMatch: boolean;
+    freshnessScore: number;
+    type: string | null;
+  }): ScoreBreakdown {
+    const keywordQualityScore = this.calculateKeywordQualityScore(input.keyword, input.type);
+    const growthScore = this.calculateGrowthScore(
+      input.recentCount,
+      input.totalCount,
+      input.growthRate,
+    );
+    const robloxExistsScore = input.robloxExists ? 100 : 0;
+    const discoverScore = input.discoverMatch ? 100 : 0;
+    const totalScore =
+      keywordQualityScore * 0.25 +
+      growthScore * 0.3 +
+      robloxExistsScore * 0.15 +
+      discoverScore * 0.2 +
+      input.freshnessScore * 0.1;
+
+    return {
+      keywordQualityScore,
+      growthScore,
+      robloxExistsScore,
+      discoverScore,
+      freshnessScore: input.freshnessScore,
+      totalScore: Number(Math.max(0, Math.min(100, totalScore)).toFixed(2)),
+    };
+  }
+
+  determineStage(
+    score: number,
+    growthRate: number,
+    recentCount: number,
+    robloxExists: boolean,
+    discoverMatch: boolean,
+  ): string {
+    if (
+      score >= 80 &&
+      growthRate >= 0.5 &&
+      recentCount >= 5 &&
+      (robloxExists || discoverMatch)
+    ) {
       return 'exploding';
     }
 
-    if (growthRate >= 0.3) {
+    if (score >= 55 && growthRate >= 0.25) {
       return 'early';
     }
 
     return 'normal';
   }
 
-  private buildInsight(keyword: string, stage: string, growthRate: number): string {
+  private buildInsight(
+    keyword: string,
+    stage: string,
+    growthRate: number,
+    robloxExists: boolean,
+    discoverMatch: boolean,
+  ): string {
     const growthPercent = Math.round(growthRate * 100);
+    const robloxSignal = robloxExists ? 'Roblox search confirms it exists.' : 'Roblox search has no strong match yet.';
+    const discoverSignal = discoverMatch ? 'It is visible in Roblox Discover.' : 'It is not matched in Roblox Discover.';
 
     if (stage === 'exploding') {
-      return `${keyword} is showing strong breakout momentum with ${growthPercent}% recent growth concentration.`;
+      return `${keyword} is showing strong breakout momentum with ${growthPercent}% growth concentration. ${robloxSignal} ${discoverSignal}`;
     }
 
     if (stage === 'early') {
-      return `${keyword} is emerging with ${growthPercent}% recent growth concentration and should be monitored.`;
+      return `${keyword} is emerging with ${growthPercent}% growth concentration. ${robloxSignal} ${discoverSignal}`;
     }
 
-    return `${keyword} is currently a baseline signal with ${growthPercent}% recent growth concentration.`;
+    return `${keyword} is currently a baseline signal with ${growthPercent}% growth concentration. ${robloxSignal} ${discoverSignal}`;
   }
 
   detectGameType(keyword: string): string | null {
@@ -303,6 +437,13 @@ export class TrendService {
       growthRate: item.growthRate ?? null,
       recentCount: item.recentCount ?? null,
       totalCount: item.totalCount ?? null,
+      robloxExists: item.robloxExists ?? false,
+      discoverMatch: item.discoverMatch ?? false,
+      keywordQualityScore: item.keywordQualityScore ?? null,
+      growthScore: item.growthScore ?? null,
+      robloxExistsScore: item.robloxExistsScore ?? null,
+      discoverScore: item.discoverScore ?? null,
+      freshnessScore: item.freshnessScore ?? null,
       prediction_score: item.score,
       growth_rate: item.growthRate ?? 0,
       platform_score: Number((item.score / 100).toFixed(2)),
