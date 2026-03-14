@@ -45,6 +45,7 @@ model NewWord {
   normalizedKeyword String
   source            String?
   firstSeenAt       DateTime @default(now())
+  lastSeenAt        DateTime @default(now())
   score             Float
   region            String?
   status            String?  @default("new")
