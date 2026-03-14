@@ -16,6 +16,23 @@ export class KeywordFilterService {
     'new',
     'update',
   ]);
+  private readonly multilingualStopwords = new Set([
+    'apakah',
+    'cara',
+    'como',
+    'para',
+  ]);
+  private readonly trailingSeoTokens = new Set([
+    'viral',
+    'shorts',
+    'short',
+    'gameplay',
+    'update',
+    'review',
+    'trailer',
+    'live',
+    'official',
+  ]);
   private readonly validSuffixTokens = new Set([
     'tycoon',
     'simulator',
@@ -68,7 +85,12 @@ export class KeywordFilterService {
         continue;
       }
 
-      const normalized = this.keywordNormalizerService.normalizeKeyword(cleanedPrefix);
+      const cleanedSeoSuffix = this.cleanTrailingSeoToken(cleanedPrefix);
+      if (!cleanedSeoSuffix) {
+        continue;
+      }
+
+      const normalized = this.keywordNormalizerService.normalizeKeyword(cleanedSeoSuffix);
       if (!normalized) {
         continue;
       }
@@ -78,7 +100,7 @@ export class KeywordFilterService {
       const tokenCount = normalized.tokens.length;
       const lastToken = normalized.tokens[normalized.tokens.length - 1] ?? '';
 
-      if (tokenCount < 2 || tokenCount > 5) {
+      if (tokenCount < 2 || tokenCount > 3) {
         continue;
       }
 
@@ -120,7 +142,11 @@ export class KeywordFilterService {
     }
 
     const firstToken = tokens[0].toLowerCase();
-    return this.rejectedPrefixTokens.has(firstToken) || tokens[0].length < 3;
+    return (
+      this.rejectedPrefixTokens.has(firstToken) ||
+      this.multilingualStopwords.has(firstToken) ||
+      tokens[0].length < 3
+    );
   }
 
   cleanKeywordPrefix(keyword: string): string | null {
@@ -138,6 +164,29 @@ export class KeywordFilterService {
     const cleanedTokens = this.prefixTokens.has(normalizedFirstToken) ? tokens.slice(1) : tokens;
 
     if (cleanedTokens.length < 2) {
+      return null;
+    }
+
+    return cleanedTokens.join(' ');
+  }
+
+  cleanTrailingSeoToken(keyword: string): string | null {
+    const tokens = keyword
+      .trim()
+      .replace(/\s+/g, ' ')
+      .split(' ')
+      .filter(Boolean);
+
+    if (!tokens.length) {
+      return null;
+    }
+
+    const lastToken = tokens[tokens.length - 1].toLowerCase();
+    const cleanedTokens = this.trailingSeoTokens.has(lastToken)
+      ? tokens.slice(0, -1)
+      : tokens;
+
+    if (cleanedTokens.length < 2 || cleanedTokens.length > 3) {
       return null;
     }
 
