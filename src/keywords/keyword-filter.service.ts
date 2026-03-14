@@ -21,6 +21,17 @@ export class KeywordFilterService {
     'sun',
     'sunday',
   ]);
+  private readonly prefixTokens = new Set([
+    'here',
+    'new',
+    'best',
+    'top',
+    'playing',
+    'trying',
+    'watching',
+    'latest',
+    'this',
+  ]);
 
   constructor(private readonly keywordNormalizerService: KeywordNormalizerService) {}
 
@@ -28,7 +39,12 @@ export class KeywordFilterService {
     const deduped = new Map<string, string>();
 
     for (const rawCandidate of candidates) {
-      const normalized = this.keywordNormalizerService.normalizeKeyword(rawCandidate);
+      const cleanedPrefix = this.cleanKeywordPrefix(rawCandidate);
+      if (!cleanedPrefix) {
+        continue;
+      }
+
+      const normalized = this.keywordNormalizerService.normalizeKeyword(cleanedPrefix);
       if (!normalized) {
         continue;
       }
@@ -62,6 +78,27 @@ export class KeywordFilterService {
     }
 
     return [...deduped.values()];
+  }
+
+  cleanKeywordPrefix(keyword: string): string | null {
+    const tokens = keyword
+      .trim()
+      .replace(/\s+/g, ' ')
+      .split(' ')
+      .filter(Boolean);
+
+    if (!tokens.length) {
+      return null;
+    }
+
+    const normalizedFirstToken = tokens[0].toLowerCase();
+    const cleanedTokens = this.prefixTokens.has(normalizedFirstToken) ? tokens.slice(1) : tokens;
+
+    if (cleanedTokens.length < 2) {
+      return null;
+    }
+
+    return cleanedTokens.join(' ');
   }
 
   private hasMeaningfulPrefix(candidate: string): boolean {
