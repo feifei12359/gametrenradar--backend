@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { normalizeKeyword } from '../common/utils/normalize-keyword.util';
 import { DISCOVERY_CONFIG, GENERIC_KEYWORDS } from '../config/discovery.config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -270,7 +270,7 @@ export class TrendService {
       this.prisma.newWord.count({
         where: {
           normalizedKeyword,
-          firstSeenAt: {
+          lastSeenAt: {
             gte: current24hStart,
           },
         },
@@ -278,7 +278,7 @@ export class TrendService {
       this.prisma.newWord.count({
         where: {
           normalizedKeyword,
-          firstSeenAt: {
+          lastSeenAt: {
             gte: previous24hStart,
             lt: current24hStart,
           },
@@ -320,7 +320,7 @@ export class TrendService {
       this.prisma.newWord.count({
         where: {
           normalizedKeyword,
-          firstSeenAt: {
+          lastSeenAt: {
             gte: new Date(now - TrendService.RECENT_WINDOW_HOURS * 60 * 60 * 1000),
           },
         },
@@ -328,7 +328,7 @@ export class TrendService {
       this.prisma.newWord.count({
         where: {
           normalizedKeyword,
-          firstSeenAt: {
+          lastSeenAt: {
             gte: new Date(now - TrendService.FRESH_WINDOW_48_HOURS * 60 * 60 * 1000),
           },
         },
@@ -336,7 +336,7 @@ export class TrendService {
       this.prisma.newWord.count({
         where: {
           normalizedKeyword,
-          firstSeenAt: {
+          lastSeenAt: {
             gte: new Date(now - TrendService.FRESH_WINDOW_72_HOURS * 60 * 60 * 1000),
           },
         },
@@ -495,6 +495,7 @@ export class TrendService {
 
     return `${keyword} 当前仍属于基础观察信号，近 24 小时增长占比约 ${growthPercent}%。${robloxSignal}${discoverSignal}`;
   }
+
 
   detectGameType(keyword: string): string | null {
     const tokens = keyword.trim().split(/\s+/).filter(Boolean);
