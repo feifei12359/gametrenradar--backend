@@ -58,6 +58,21 @@ model NewWord {
   @@unique([keyword, source])
 }
 
+model KeywordEvent {
+  id                String   @id @default(cuid())
+  keyword           String
+  normalizedKeyword String
+  source            String?
+  region            String?
+  score             Float?
+  seenAt            DateTime @default(now())
+  createdAt         DateTime @default(now())
+
+  @@index([normalizedKeyword, seenAt(sort: Desc)])
+  @@index([seenAt(sort: Desc)])
+  @@index([source])
+}
+
 model JobRun {
   id        String   @id @default(cuid())
   type      String
