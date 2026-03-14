@@ -15,18 +15,7 @@ export class KeywordExtractionService {
     'today',
     'now',
     'guide',
-    'you',
-    'this',
     'video',
-    'is',
-    'am',
-    'are',
-    'was',
-    'were',
-    'unlock',
-    'recently',
-    'live',
-    'viewer',
   ]);
 
   private readonly noiseWords = new Set([
@@ -42,6 +31,8 @@ export class KeywordExtractionService {
     'ever',
   ]);
 
+  private readonly stopWords = new Set(['a', 'the', 'we', 'my', 'you', 'i']);
+
   private readonly bannedLeadWords = new Set([
     'how',
     'why',
@@ -51,12 +42,11 @@ export class KeywordExtractionService {
     'every',
     'best',
     'top',
+    'guys',
   ]);
 
   private readonly weakLeadWords = new Set([
-    'a',
     'an',
-    'i',
     'come',
     'have',
     'super',
@@ -65,6 +55,9 @@ export class KeywordExtractionService {
     'millionaire',
     'research',
     'mode',
+    'sec',
+    'secret',
+    'steal',
   ]);
 
   private readonly connectorWords = new Set(['in', 'for', 'of', 'with', 'to']);
@@ -74,8 +67,8 @@ export class KeywordExtractionService {
     'simulator',
     'survival',
     'obby',
-    'defense',
     'rng',
+    'defense',
     'battlegrounds',
   ]);
 
@@ -159,7 +152,7 @@ export class KeywordExtractionService {
       return false;
     }
 
-    if (lowered.some((token) => this.bannedWords.has(token))) {
+    if (lowered.some((token) => this.bannedWords.has(token) || this.stopWords.has(token))) {
       return false;
     }
 
@@ -169,6 +162,11 @@ export class KeywordExtractionService {
 
     const titleLikeCount = tokens.filter((token) => this.isTitleLikeToken(token)).length;
     if (titleLikeCount < Math.ceil(tokens.length / 2)) {
+      return false;
+    }
+
+    const hasGameType = lowered.some((token) => this.gameTypeWords.has(token));
+    if (!hasGameType && tokens.some((token) => token.length < 4)) {
       return false;
     }
 
@@ -183,7 +181,7 @@ export class KeywordExtractionService {
 
     score += tokens.length * 10;
     score += tokens.filter((token) => this.isTitleLikeToken(token)).length * 12;
-    score += lowered.filter((token) => this.gameTypeWords.has(token)).length * 16;
+    score += lowered.filter((token) => this.gameTypeWords.has(token)).length * 24;
 
     if (tokens.length === 3) {
       score += 4;
