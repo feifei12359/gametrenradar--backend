@@ -3,11 +3,18 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class KeywordExtractionService {
   private readonly bannedWords = new Set([
+    'unlock',
+    'this',
+    'how',
+    'watch',
     'play',
     'played',
     'playing',
+    'recently',
+    'live',
+    'present',
+    'welcome',
     'try',
-    'watch',
     'build',
     'make',
     'start',
@@ -31,7 +38,7 @@ export class KeywordExtractionService {
     'ever',
   ]);
 
-  private readonly stopWords = new Set(['a', 'the', 'we', 'my', 'you', 'i']);
+  private readonly stopWords = new Set(['a', 'the', 'my', 'your', 'our', 'we', 'you', 'i']);
 
   private readonly bannedLeadWords = new Set([
     'how',
@@ -58,6 +65,8 @@ export class KeywordExtractionService {
     'sec',
     'secret',
     'steal',
+    'pats',
+    'khaleel',
   ]);
 
   private readonly connectorWords = new Set(['in', 'for', 'of', 'with', 'to']);
@@ -70,6 +79,8 @@ export class KeywordExtractionService {
     'rng',
     'defense',
     'battlegrounds',
+    'factory',
+    'clicker',
   ]);
 
   extractCandidates(title: string): string[] {
@@ -166,7 +177,7 @@ export class KeywordExtractionService {
     }
 
     const hasGameType = lowered.some((token) => this.gameTypeWords.has(token));
-    if (!hasGameType && tokens.some((token) => token.length < 4)) {
+    if (!hasGameType) {
       return false;
     }
 
