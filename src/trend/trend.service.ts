@@ -15,6 +15,7 @@ type NewWordForTrend = {
 type TrendRecord = {
   id: string;
   keyword: string;
+  normalizedKeyword?: string | null;
   stage: string;
   type?: string | null;
   score: number;
@@ -229,6 +230,7 @@ export class TrendService {
 
     return {
       keyword: item.keyword,
+      normalizedKeyword,
       score: scoreBreakdown.totalScore,
       stage,
       type,
@@ -511,6 +513,7 @@ export class TrendService {
   private toApiView(item: TrendRecord): TrendApiView {
     return {
       ...item,
+      normalizedKeyword: item.normalizedKeyword ?? this.normalizeKeyword(item.keyword),
       type: item.type ?? null,
       growthRate: item.growthRate ?? null,
       acceleration: item.acceleration ?? 0,

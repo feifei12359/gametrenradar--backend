@@ -87,7 +87,7 @@ export class NewWordsService {
                 },
               },
               update: {
-                normalizedKeyword: normalizedKeyword?.compareKey ?? null,
+                normalizedKeyword: normalizedKeyword?.compareKey ?? item.keyword.trim().toLowerCase(),
                 score: item.score,
                 region: item.region,
                 status: 'analyzed',
@@ -95,7 +95,7 @@ export class NewWordsService {
               },
               create: {
                 keyword: item.keyword,
-                normalizedKeyword: normalizedKeyword?.compareKey ?? null,
+                normalizedKeyword: normalizedKeyword?.compareKey ?? item.keyword.trim().toLowerCase(),
                 source: item.source,
                 region: item.region,
                 score: item.score,
