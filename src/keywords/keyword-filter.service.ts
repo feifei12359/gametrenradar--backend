@@ -1,22 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { GENERIC_KEYWORDS } from '../config/discovery.config';
 
 @Injectable()
 export class KeywordFilterService {
-  private readonly blacklist = new Set([
-    'simulator',
-    'tycoon',
-    'tower defense',
-    'obby',
-    'rng',
-    'clicker',
-    'game',
-    'update',
-    'codes',
-    'code',
-    'roblox',
-    'guide',
-    'wiki',
-  ]);
+  private readonly blacklist = new Set<string>(GENERIC_KEYWORDS);
 
   filterCandidates(candidates: string[]): string[] {
     const deduped = new Set<string>();

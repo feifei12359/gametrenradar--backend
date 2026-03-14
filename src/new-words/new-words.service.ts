@@ -1,4 +1,5 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { DISCOVERY_CONFIG } from '../config/discovery.config';
 import { KeywordExtractionService } from '../keywords/keyword-extraction.service';
 import { KeywordFilterService } from '../keywords/keyword-filter.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -125,12 +126,17 @@ export class NewWordsService {
 
   private buildCandidates(videos: YoutubeVideoItem[], limit?: number): CandidateKeyword[] {
     const bestByKeyword = new Map<string, CandidateKeyword>();
+    let processedCandidates = 0;
 
     for (const video of videos) {
       const extracted = this.keywordExtractionService.extractCandidates(video.title);
       const filtered = this.keywordFilterService.filterCandidates(extracted);
 
       for (const keyword of filtered) {
+        if (processedCandidates >= DISCOVERY_CONFIG.extraction.maxRawCandidatesTotal) {
+          break;
+        }
+
         const candidate: CandidateKeyword = {
           keyword,
           source: 'youtube',
@@ -142,10 +148,19 @@ export class NewWordsService {
         if (!existing || candidate.score > existing.score) {
           bestByKeyword.set(candidate.keyword.toLowerCase(), candidate);
         }
+
+        processedCandidates += 1;
+      }
+
+      if (processedCandidates >= DISCOVERY_CONFIG.extraction.maxRawCandidatesTotal) {
+        break;
       }
     }
 
-    const values = [...bestByKeyword.values()].sort((a, b) => b.score - a.score);
+    const values = [...bestByKeyword.values()]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, DISCOVERY_CONFIG.filtering.maxAcceptedNewWords);
+
     return typeof limit === 'number' && limit > 0 ? values.slice(0, limit) : values;
   }
 

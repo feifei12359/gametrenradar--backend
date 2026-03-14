@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DISCOVERY_CONFIG } from '../config/discovery.config';
 
 @Injectable()
 export class KeywordExtractionService {
@@ -55,7 +56,7 @@ export class KeywordExtractionService {
       candidates.add(this.toTitleCase(tokens.slice(0, Math.min(tokens.length, 4)).join(' ')));
     }
 
-    return [...candidates];
+    return [...candidates].slice(0, DISCOVERY_CONFIG.extraction.maxCandidatesPerTitle);
   }
 
   private cleanTitle(title: string): string {

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DISCOVERY_CONFIG } from '../config/discovery.config';
 import { PrismaService } from '../prisma/prisma.service';
 
 type NewWordForTrend = {
@@ -60,8 +61,10 @@ export class TrendService {
     return trends.map((item) => this.toApiView(item));
   }
 
-  async getTop(limit = 10): Promise<TrendApiView[]> {
-    const normalizedLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 100) : 10;
+  async getTop(limit?: number): Promise<TrendApiView[]> {
+    const normalizedLimit = typeof limit === 'number' && Number.isFinite(limit)
+      ? Math.min(Math.max(limit, 1), DISCOVERY_CONFIG.filtering.maxAcceptedNewWords)
+      : DISCOVERY_CONFIG.filtering.dashboardTopLimit;
 
     const trends = await this.prisma.trend.findMany({
       orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],

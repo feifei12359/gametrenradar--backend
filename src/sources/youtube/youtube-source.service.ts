@@ -1,4 +1,5 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { DISCOVERY_CONFIG } from '../../config/discovery.config';
 
 export type YoutubeVideoItem = {
   videoId: string;
@@ -28,22 +29,18 @@ type YoutubeSearchResponse = {
 export class YoutubeSourceService {
   private readonly logger = new Logger(YoutubeSourceService.name);
   private readonly endpoint = 'https://www.googleapis.com/youtube/v3/search';
-  private readonly searchQueries = [
-    'roblox new game',
-    'roblox simulator',
-    'roblox tycoon',
-    'roblox update',
-    'roblox codes',
-  ];
+  private readonly searchQueries = DISCOVERY_CONFIG.youtube.queries;
 
   async fetchRecentRobloxVideos(): Promise<YoutubeVideoItem[]> {
-    const publishedAfter = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+    const publishedAfter = new Date(
+      Date.now() - DISCOVERY_CONFIG.youtube.hoursWindow * 60 * 60 * 1000,
+    ).toISOString();
 
     const results = await Promise.all(
       this.searchQueries.map((query) => this.fetchByQuery(query, publishedAfter)),
     );
 
-    return results.flat();
+    return results.flat().slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal);
   }
 
   private async fetchByQuery(query: string, publishedAfter: string): Promise<YoutubeVideoItem[]> {
@@ -60,7 +57,7 @@ export class YoutubeSourceService {
     url.searchParams.set('part', 'snippet');
     url.searchParams.set('type', 'video');
     url.searchParams.set('order', 'date');
-    url.searchParams.set('maxResults', '10');
+    url.searchParams.set('maxResults', String(DISCOVERY_CONFIG.youtube.maxVideosPerQuery));
     url.searchParams.set('q', query);
     url.searchParams.set('publishedAfter', publishedAfter);
 
