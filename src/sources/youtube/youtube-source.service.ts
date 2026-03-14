@@ -7,6 +7,7 @@ export type YoutubeVideoItem = {
   publishedAt: string;
   channelTitle: string;
   query: string;
+  region: string;
 };
 
 type YoutubeSearchResponse = {
@@ -27,6 +28,31 @@ type YoutubeSearchResponse = {
 
 @Injectable()
 export class YoutubeSourceService {
+  private static readonly HIGH_VALUE_REGIONS = [
+    'US',
+    'CA',
+    'GB',
+    'AU',
+    'NZ',
+    'DE',
+    'FR',
+    'NL',
+    'SE',
+    'NO',
+    'DK',
+    'FI',
+    'CH',
+    'AT',
+    'BE',
+    'IE',
+    'LU',
+    'IT',
+    'ES',
+    'PT',
+    'PL',
+    'CZ',
+  ] as const;
+
   private readonly logger = new Logger(YoutubeSourceService.name);
   private readonly endpoint = 'https://www.googleapis.com/youtube/v3/search';
   private readonly searchQueries = DISCOVERY_CONFIG.youtube.queries;
@@ -37,13 +63,19 @@ export class YoutubeSourceService {
     ).toISOString();
 
     const results = await Promise.all(
-      this.searchQueries.map((query) => this.fetchByQuery(query, publishedAfter)),
+      YoutubeSourceService.HIGH_VALUE_REGIONS.flatMap((region) =>
+        this.searchQueries.map((query) => this.fetchByQuery(query, publishedAfter, region)),
+      ),
     );
 
     return results.flat().slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal);
   }
 
-  private async fetchByQuery(query: string, publishedAfter: string): Promise<YoutubeVideoItem[]> {
+  private async fetchByQuery(
+    query: string,
+    publishedAfter: string,
+    region: string,
+  ): Promise<YoutubeVideoItem[]> {
     const apiKey = process.env.YOUTUBE_API_KEY;
 
     if (!apiKey) {
@@ -60,6 +92,7 @@ export class YoutubeSourceService {
     url.searchParams.set('maxResults', String(DISCOVERY_CONFIG.youtube.maxVideosPerQuery));
     url.searchParams.set('q', query);
     url.searchParams.set('publishedAfter', publishedAfter);
+    url.searchParams.set('regionCode', region);
 
     const response = await fetch(url.toString());
     const json = (await response.json()) as YoutubeSearchResponse;
@@ -77,6 +110,7 @@ export class YoutubeSourceService {
         publishedAt: item.snippet?.publishedAt ?? '',
         channelTitle: item.snippet?.channelTitle?.trim() ?? '',
         query,
+        region,
       }))
       .filter((item) => item.videoId && item.title);
   }
