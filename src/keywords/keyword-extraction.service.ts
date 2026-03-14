@@ -4,8 +4,8 @@ import { Injectable } from '@nestjs/common';
 export class KeywordExtractionService {
   private readonly bannedWords = new Set([
     'play',
-    'you',
-    'this',
+    'played',
+    'playing',
     'try',
     'watch',
     'must',
@@ -13,31 +13,35 @@ export class KeywordExtractionService {
     'now',
     'best',
     'guide',
-    'roblox',
+    'you',
+    'this',
     'game',
     'video',
   ]);
 
   private readonly noiseWords = new Set([
-    'new',
+    'gameplay',
+    'roblox',
     'update',
     'updates',
     'codes',
     'code',
-    'official',
-    'release',
-    'released',
-    'just',
-    'videos',
-    'how',
+    'new',
+  ]);
+
+  private readonly weakLeadWords = new Set([
     'to',
-    'in',
-    'on',
     'for',
-    'the',
-    'all',
-    'free',
-    'admin',
+    'a',
+    'an',
+    'i',
+    'come',
+    'have',
+    'with',
+    'out',
+    'ever',
+    'super',
+    'scary',
   ]);
 
   extractCandidates(title: string): string[] {
@@ -46,12 +50,16 @@ export class KeywordExtractionService {
       return [];
     }
 
-    const tokens = cleaned.split(/\s+/).filter(Boolean);
+    const originalTokens = cleaned.split(/\s+/).filter(Boolean);
+    const normalizedTokens = originalTokens.filter(
+      (token) => !this.noiseWords.has(token.toLowerCase()),
+    );
+
     const candidates: string[] = [];
 
     for (let size = 4; size >= 2; size -= 1) {
-      for (let index = 0; index <= tokens.length - size; index += 1) {
-        const phraseTokens = tokens.slice(index, index + size);
+      for (let index = 0; index <= normalizedTokens.length - size; index += 1) {
+        const phraseTokens = normalizedTokens.slice(index, index + size);
         if (!this.isValidGameNamePhrase(phraseTokens)) {
           continue;
         }
@@ -85,8 +93,7 @@ export class KeywordExtractionService {
       return false;
     }
 
-    const meaningfulTokens = lowered.filter((token) => !this.noiseWords.has(token));
-    if (meaningfulTokens.length < 2) {
+    if (this.weakLeadWords.has(lowered[0])) {
       return false;
     }
 
