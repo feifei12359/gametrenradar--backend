@@ -10,6 +10,7 @@ datasource db {
 model Trend {
   id                  String   @id @default(cuid())
   keyword             String
+  normalizedKeyword   String
   stage               String
   type                String?
   score               Float
@@ -34,12 +35,14 @@ model Trend {
 
   @@index([stage, score(sort: Desc)])
   @@index([createdAt(sort: Desc)])
+  @@index([normalizedKeyword])
+  @@index([type])
 }
 
 model NewWord {
   id                String   @id @default(cuid())
   keyword           String
-  normalizedKeyword String?
+  normalizedKeyword String
   source            String?
   firstSeenAt       DateTime @default(now())
   score             Float
