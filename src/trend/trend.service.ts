@@ -126,7 +126,7 @@ export class TrendService {
     const { recentCount, totalCount } = await this.getKeywordCounts(item.keyword);
     const growthRate = this.calculateGrowthRate(recentCount, totalCount);
     const score = this.calculateTrendScore(item.score, growthRate);
-    const stage = this.determineStage(growthRate);
+    const stage = this.determineStage(growthRate, recentCount, totalCount);
     const type = this.detectGameType(item.keyword);
 
     return {
@@ -186,8 +186,12 @@ export class TrendService {
     return Number(weightedScore.toFixed(2));
   }
 
-  determineStage(growthRate: number): string {
-    if (growthRate >= 0.6) {
+  determineStage(growthRate: number, recentCount: number, totalCount: number): string {
+    if (totalCount < 5) {
+      return 'early';
+    }
+
+    if (growthRate >= 0.6 && recentCount >= 6) {
       return 'exploding';
     }
 
