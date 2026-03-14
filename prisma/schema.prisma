@@ -11,6 +11,7 @@ model Trend {
   id         String   @id @default(cuid())
   keyword    String
   stage      String
+  type       String?
   score      Float
   source     String?
   region     String?
