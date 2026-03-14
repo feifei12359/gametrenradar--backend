@@ -34,17 +34,19 @@ model Trend {
 }
 
 model NewWord {
-  id          String   @id @default(cuid())
-  keyword     String
-  source      String?
-  firstSeenAt DateTime @default(now())
-  score       Float
-  region      String?
-  status      String?  @default("new")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(cuid())
+  keyword           String
+  normalizedKeyword String?
+  source            String?
+  firstSeenAt       DateTime @default(now())
+  score             Float
+  region            String?
+  status            String?  @default("new")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([firstSeenAt(sort: Desc)])
+  @@index([normalizedKeyword])
   @@index([status])
   @@unique([keyword, source])
 }
