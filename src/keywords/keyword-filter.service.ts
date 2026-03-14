@@ -5,6 +5,22 @@ import { KeywordNormalizerService } from './keyword-normalizer.service';
 @Injectable()
 export class KeywordFilterService {
   private readonly blacklist = new Set<string>(GENERIC_KEYWORDS);
+  private readonly weekdayTokens = new Set([
+    'mon',
+    'monday',
+    'tue',
+    'tuesday',
+    'wed',
+    'wednesday',
+    'thu',
+    'thursday',
+    'fri',
+    'friday',
+    'sat',
+    'saturday',
+    'sun',
+    'sunday',
+  ]);
 
   constructor(private readonly keywordNormalizerService: KeywordNormalizerService) {}
 
@@ -27,6 +43,10 @@ export class KeywordFilterService {
       }
 
       if (lastToken.length < 2) {
+        continue;
+      }
+
+      if (this.shouldRejectTruncatedKeyword(normalized.tokens)) {
         continue;
       }
 
@@ -62,6 +82,36 @@ export class KeywordFilterService {
 
     const meaningfulTokens = tokens.filter((token) => !this.blacklist.has(token));
     return meaningfulTokens.length >= 1;
+  }
+
+  isWeekdayToken(token: string): boolean {
+    return this.weekdayTokens.has(token.toLowerCase());
+  }
+
+  hasInvalidShortToken(tokens: string[]): boolean {
+    return tokens.some((token) => token.length < 2);
+  }
+
+  shouldRejectTruncatedKeyword(tokens: string[]): boolean {
+    if (!tokens.length) {
+      return true;
+    }
+
+    const normalizedTokens = tokens.map((token) => token.toLowerCase());
+
+    if (this.isWeekdayToken(normalizedTokens[0])) {
+      return true;
+    }
+
+    if (this.hasInvalidShortToken(tokens)) {
+      return true;
+    }
+
+    if (tokens[0].length < 3) {
+      return true;
+    }
+
+    return false;
   }
 
   getQualityScoreAdjustment(keyword: string): number {
