@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DISCOVERY_CONFIG } from '../config/discovery.config';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -38,6 +38,7 @@ type TrendApiView = TrendRecord & {
 @Injectable()
 export class TrendService {
   private static readonly RECENT_WINDOW_HOURS = 24;
+  private readonly logger = new Logger(TrendService.name);
   private readonly gameTypes = new Set([
     'tycoon',
     'simulator',
@@ -123,9 +124,12 @@ export class TrendService {
   }
 
   private async buildTrendCreateInput(item: NewWordForTrend) {
-    const { recentCount, totalCount } = await this.getKeywordCounts(item.keyword);
+    const [{ recentCount, totalCount }, existsOnRoblox] = await Promise.all([
+      this.getKeywordCounts(item.keyword),
+      this.checkRobloxGameExists(item.keyword),
+    ]);
     const growthRate = this.calculateGrowthRate(recentCount, totalCount);
-    const score = this.calculateTrendScore(item.score, growthRate);
+    const score = this.calculateTrendScore(item.score, growthRate, existsOnRoblox);
     const stage = this.determineStage(growthRate, recentCount, totalCount);
     const type = this.detectGameType(item.keyword);
 
@@ -181,8 +185,45 @@ export class TrendService {
     return Number((recentCount / totalCount).toFixed(4));
   }
 
-  calculateTrendScore(baseScore: number, growthRate: number): number {
-    const weightedScore = baseScore * 0.6 + growthRate * 100 * 0.4;
+  async checkRobloxGameExists(keyword: string): Promise<boolean> {
+    const url = `https://www.roblox.com/search/games?keyword=${encodeURIComponent(keyword)}`;
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; GameTrendRadar/1.0)',
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`Roblox existence check failed for "${keyword}" with ${response.status}`);
+        return false;
+      }
+
+      const html = await response.text();
+      const normalizedHtml = html.toLowerCase();
+      const normalizedKeyword = keyword.trim().toLowerCase();
+
+      return (
+        normalizedHtml.includes('/games/') ||
+        normalizedHtml.includes('game-card') ||
+        normalizedHtml.includes('game-tile') ||
+        normalizedHtml.includes(normalizedKeyword)
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.warn(`Roblox existence check failed for "${keyword}": ${message}`);
+      return false;
+    }
+  }
+
+  calculateTrendScore(baseScore: number, growthRate: number, existsOnRoblox: boolean): number {
+    const growthScore = growthRate * 100;
+    const robloxExistsScore = existsOnRoblox ? 20 : 0;
+    const weightedScore =
+      baseScore * 0.5 + growthScore * 0.3 + robloxExistsScore * 0.2;
+
     return Number(weightedScore.toFixed(2));
   }
 
