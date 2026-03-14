@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { DISCOVERY_CONFIG } from '../config/discovery.config';
 
 @Injectable()
 export class KeywordExtractionService {
@@ -12,7 +11,6 @@ export class KeywordExtractionService {
     'code',
     'game',
     'games',
-    'best',
     'official',
     'release',
     'released',
@@ -30,6 +28,26 @@ export class KeywordExtractionService {
     'admin',
   ]);
 
+  private readonly bannedWords = new Set([
+    'play',
+    'you',
+    'this',
+    'try',
+    'watch',
+    'must',
+    'today',
+    'now',
+    'best',
+    'guide',
+  ]);
+
+  private readonly bannedPhrases = new Set([
+    'play with you',
+    'try out a',
+    'have you play',
+    'come try out a',
+  ]);
+
   extractCandidates(title: string): string[] {
     const cleaned = this.cleanTitle(title);
     if (!cleaned) {
@@ -37,26 +55,10 @@ export class KeywordExtractionService {
     }
 
     const originalTokens = cleaned.split(/\s+/).filter(Boolean);
-    const tokens = originalTokens.filter((token) => !this.noiseWords.has(token.toLowerCase()));
+    const candidatePool = this.buildCandidatePool(originalTokens);
+    const bestCandidate = this.pickBestCandidate(candidatePool);
 
-    const candidates = new Set<string>();
-
-    for (let size = 5; size >= 2; size -= 1) {
-      for (let index = 0; index <= tokens.length - size; index += 1) {
-        const phraseTokens = tokens.slice(index, index + size);
-        if (!this.looksLikeGamePhrase(phraseTokens)) {
-          continue;
-        }
-
-        candidates.add(this.toTitleCase(phraseTokens.join(' ')));
-      }
-    }
-
-    if (!candidates.size && tokens.length >= 2) {
-      candidates.add(this.toTitleCase(tokens.slice(0, Math.min(tokens.length, 4)).join(' ')));
-    }
-
-    return [...candidates].slice(0, DISCOVERY_CONFIG.extraction.maxCandidatesPerTitle);
+    return bestCandidate ? [bestCandidate] : [];
   }
 
   private cleanTitle(title: string): string {
@@ -69,15 +71,93 @@ export class KeywordExtractionService {
       .trim();
   }
 
+  private buildCandidatePool(tokens: string[]): string[] {
+    const candidates: string[] = [];
+
+    for (let size = 4; size >= 2; size -= 1) {
+      for (let index = 0; index <= tokens.length - size; index += 1) {
+        const phraseTokens = tokens.slice(index, index + size);
+        if (!this.looksLikeGamePhrase(phraseTokens)) {
+          continue;
+        }
+
+        candidates.push(this.toTitleCase(phraseTokens.join(' ')));
+      }
+    }
+
+    return candidates;
+  }
+
+  private pickBestCandidate(candidates: string[]): string | null {
+    if (!candidates.length) {
+      return null;
+    }
+
+    const ranked = candidates
+      .map((candidate) => ({
+        candidate,
+        score: this.scoreCandidate(candidate),
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    return ranked[0]?.score > 0 ? ranked[0].candidate : null;
+  }
+
   private looksLikeGamePhrase(tokens: string[]): boolean {
-    if (tokens.length < 2 || tokens.length > 5) {
+    if (tokens.length < 2 || tokens.length > 4) {
       return false;
     }
 
-    const significantCount = tokens.filter((token) => token.length > 2 || /\d/.test(token)).length;
-    const titleLikeCount = tokens.filter((token) => /^[A-Z0-9][a-zA-Z0-9]*$/.test(token)).length;
+    const normalizedTokens = tokens.map((token) => token.toLowerCase());
+    const joined = normalizedTokens.join(' ');
 
-    return significantCount >= 2 && titleLikeCount >= Math.max(2, tokens.length - 1);
+    if (this.bannedPhrases.has(joined)) {
+      return false;
+    }
+
+    if (normalizedTokens.some((token) => this.bannedWords.has(token))) {
+      return false;
+    }
+
+    const filteredTokens = normalizedTokens.filter((token) => !this.noiseWords.has(token));
+    if (filteredTokens.length < 2) {
+      return false;
+    }
+
+    const titleCaseCount = tokens.filter((token) => this.isTitleLikeToken(token)).length;
+    if (titleCaseCount < Math.ceil(tokens.length / 2)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private scoreCandidate(candidate: string): number {
+    const tokens = candidate.split(' ');
+    const lower = candidate.toLowerCase();
+
+    let score = 0;
+
+    score += tokens.length * 10;
+    score += tokens.filter((token) => this.isTitleLikeToken(token)).length * 8;
+
+    if (/simulator|tycoon/.test(lower)) {
+      score += 12;
+    }
+
+    if (tokens.length === 3) {
+      score += 6;
+    }
+
+    if (tokens.length === 4) {
+      score += 4;
+    }
+
+    return score;
+  }
+
+  private isTitleLikeToken(token: string): boolean {
+    return /^[A-Z][a-zA-Z0-9]*$/.test(token) || /^\d+[A-Z]?[a-zA-Z0-9]*$/.test(token);
   }
 
   private toTitleCase(value: string): string {
