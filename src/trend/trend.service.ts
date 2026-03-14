@@ -13,6 +13,7 @@ type TrendRecord = {
   id: string;
   keyword: string;
   stage: string;
+  type?: string | null;
   score: number;
   source: string | null;
   region: string | null;
@@ -33,6 +34,16 @@ type TrendApiView = TrendRecord & {
 
 @Injectable()
 export class TrendService {
+  private readonly gameTypes = new Set([
+    'tycoon',
+    'simulator',
+    'obby',
+    'survival',
+    'defense',
+    'rng',
+    'battlegrounds',
+  ]);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async getExploding(): Promise<TrendApiView[]> {
@@ -105,11 +116,13 @@ export class TrendService {
 
   private buildTrendCreateInput(item: NewWordForTrend) {
     const stage = this.resolveStage(item.score);
+    const type = this.detectGameType(item.keyword);
 
     return {
       keyword: item.keyword,
       score: item.score,
       stage,
+      type,
       source: item.source,
       region: item.region,
       aiInsight: this.buildInsight(item.keyword, stage),
@@ -140,9 +153,20 @@ export class TrendService {
     return `${keyword} is tracked as a baseline signal for future scoring updates.`;
   }
 
+  detectGameType(keyword: string): string | null {
+    const tokens = keyword.trim().split(/\s+/).filter(Boolean);
+    if (!tokens.length) {
+      return null;
+    }
+
+    const lastToken = tokens[tokens.length - 1].toLowerCase();
+    return this.gameTypes.has(lastToken) ? lastToken : null;
+  }
+
   private toApiView(item: TrendRecord): TrendApiView {
     return {
       ...item,
+      type: item.type ?? null,
       prediction_score: item.score,
       growth_rate: Number((item.score / 100).toFixed(2)),
       platform_score: Number((item.score / 100).toFixed(2)),
