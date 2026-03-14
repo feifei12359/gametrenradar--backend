@@ -267,24 +267,24 @@ export class TrendService {
     );
 
     const [current24hCount, previous24hCount, totalCount] = await this.prisma.$transaction([
-      this.prisma.newWord.count({
+      (this.prisma as any).keywordEvent.count({
         where: {
           normalizedKeyword,
-          lastSeenAt: {
+          seenAt: {
             gte: current24hStart,
           },
         },
       }),
-      this.prisma.newWord.count({
+      (this.prisma as any).keywordEvent.count({
         where: {
           normalizedKeyword,
-          lastSeenAt: {
+          seenAt: {
             gte: previous24hStart,
             lt: current24hStart,
           },
         },
       }),
-      this.prisma.newWord.count({
+      (this.prisma as any).keywordEvent.count({
         where: {
           normalizedKeyword,
         },
@@ -317,26 +317,26 @@ export class TrendService {
     const normalizedKeyword = this.normalizeKeyword(keyword);
     const now = Date.now();
     const [count24, count48, count72] = await this.prisma.$transaction([
-      this.prisma.newWord.count({
+      (this.prisma as any).keywordEvent.count({
         where: {
           normalizedKeyword,
-          lastSeenAt: {
+          seenAt: {
             gte: new Date(now - TrendService.RECENT_WINDOW_HOURS * 60 * 60 * 1000),
           },
         },
       }),
-      this.prisma.newWord.count({
+      (this.prisma as any).keywordEvent.count({
         where: {
           normalizedKeyword,
-          lastSeenAt: {
+          seenAt: {
             gte: new Date(now - TrendService.FRESH_WINDOW_48_HOURS * 60 * 60 * 1000),
           },
         },
       }),
-      this.prisma.newWord.count({
+      (this.prisma as any).keywordEvent.count({
         where: {
           normalizedKeyword,
-          lastSeenAt: {
+          seenAt: {
             gte: new Date(now - TrendService.FRESH_WINDOW_72_HOURS * 60 * 60 * 1000),
           },
         },

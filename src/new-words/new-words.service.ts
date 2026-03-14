@@ -79,9 +79,21 @@ export class NewWordsService {
         const results: NewWordRecord[] = [];
 
         for (const item of candidates) {
+          const seenAt = new Date();
           const normalizedKeyword =
             this.keywordNormalizerService.normalizeKeyword(item.keyword)?.compareKey ??
             item.keyword.trim().toLowerCase();
+
+          await (tx as any).keywordEvent.create({
+            data: {
+              keyword: item.keyword,
+              normalizedKeyword,
+              source: item.source,
+              region: item.region,
+              score: item.score,
+              seenAt,
+            },
+          });
 
           const existing = await tx.newWord.findFirst({
             where: {
@@ -98,7 +110,7 @@ export class NewWordsService {
               data: {
                 keyword: item.keyword,
                 normalizedKeyword,
-                lastSeenAt: new Date(),
+                lastSeenAt: seenAt,
                 score: item.score,
                 region: item.region,
                 status: 'analyzed',
@@ -114,7 +126,7 @@ export class NewWordsService {
               keyword: item.keyword,
               normalizedKeyword,
               source: item.source,
-              lastSeenAt: new Date(),
+              lastSeenAt: seenAt,
               region: item.region,
               score: item.score,
               status: 'analyzed',
