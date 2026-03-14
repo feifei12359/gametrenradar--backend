@@ -13,6 +13,7 @@ import { AnalyzeNewWordsDto } from './dto/analyze-new-words.dto';
 type NewWordRecord = {
   id: string;
   keyword: string;
+  normalizedKeyword?: string | null;
   source: string | null;
   firstSeenAt: Date;
   score: number;
@@ -75,27 +76,33 @@ export class NewWordsService {
 
       const savedItems = await this.prisma.$transaction(
         candidates.map((item) =>
-          this.prisma.newWord.upsert({
-            where: {
-              keyword_source: {
-                keyword: item.keyword,
-                source: item.source,
+          (() => {
+            const normalizedKeyword = this.keywordNormalizerService.normalizeKeyword(item.keyword);
+
+            return this.prisma.newWord.upsert({
+              where: {
+                keyword_source: {
+                  keyword: item.keyword,
+                  source: item.source,
+                },
               },
-            },
-            update: {
-              score: item.score,
-              region: item.region,
-              status: 'analyzed',
-              firstSeenAt: new Date(),
-            },
-            create: {
-              keyword: item.keyword,
-              source: item.source,
-              region: item.region,
-              score: item.score,
-              status: 'analyzed',
-            },
-          }),
+              update: {
+                normalizedKeyword: normalizedKeyword?.compareKey ?? null,
+                score: item.score,
+                region: item.region,
+                status: 'analyzed',
+                firstSeenAt: new Date(),
+              },
+              create: {
+                keyword: item.keyword,
+                normalizedKeyword: normalizedKeyword?.compareKey ?? null,
+                source: item.source,
+                region: item.region,
+                score: item.score,
+                status: 'analyzed',
+              },
+            });
+          })(),
         ),
       );
 

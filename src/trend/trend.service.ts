@@ -225,6 +225,7 @@ export class TrendService {
     recentCount: number;
     totalCount: number;
   }> {
+    const normalizedKeyword = this.normalizeKeyword(keyword);
     const recentWindowStart = new Date(
       Date.now() - TrendService.RECENT_WINDOW_HOURS * 60 * 60 * 1000,
     );
@@ -232,7 +233,7 @@ export class TrendService {
     const [recentCount, totalCount] = await this.prisma.$transaction([
       this.prisma.newWord.count({
         where: {
-          keyword,
+          normalizedKeyword,
           firstSeenAt: {
             gte: recentWindowStart,
           },
@@ -240,7 +241,7 @@ export class TrendService {
       }),
       this.prisma.newWord.count({
         where: {
-          keyword,
+          normalizedKeyword,
         },
       }),
     ]);
@@ -257,11 +258,12 @@ export class TrendService {
   }
 
   async calculateFreshnessScore(keyword: string): Promise<number> {
+    const normalizedKeyword = this.normalizeKeyword(keyword);
     const now = Date.now();
     const [count24, count48, count72] = await this.prisma.$transaction([
       this.prisma.newWord.count({
         where: {
-          keyword,
+          normalizedKeyword,
           firstSeenAt: {
             gte: new Date(now - TrendService.RECENT_WINDOW_HOURS * 60 * 60 * 1000),
           },
@@ -269,7 +271,7 @@ export class TrendService {
       }),
       this.prisma.newWord.count({
         where: {
-          keyword,
+          normalizedKeyword,
           firstSeenAt: {
             gte: new Date(now - TrendService.FRESH_WINDOW_48_HOURS * 60 * 60 * 1000),
           },
@@ -277,7 +279,7 @@ export class TrendService {
       }),
       this.prisma.newWord.count({
         where: {
-          keyword,
+          normalizedKeyword,
           firstSeenAt: {
             gte: new Date(now - TrendService.FRESH_WINDOW_72_HOURS * 60 * 60 * 1000),
           },
