@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { normalizeKeyword } from '../common/utils/normalize-keyword.util';
 import { DISCOVERY_CONFIG } from '../config/discovery.config';
 import { PrismaService } from '../prisma/prisma.service';
+import { RobloxDiscoverService } from '../sources/roblox/roblox-discover.service';
 
 type NewWordForTrend = {
   keyword: string;
@@ -49,7 +51,10 @@ export class TrendService {
     'battlegrounds',
   ]);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly robloxDiscoverService: RobloxDiscoverService,
+  ) {}
 
   async getExploding(): Promise<TrendApiView[]> {
     const trends = await this.prisma.trend.findMany({
@@ -105,8 +110,10 @@ export class TrendService {
 
     await this.prisma.trend.deleteMany();
 
+    const discoverGames = await this.robloxDiscoverService.fetchDiscoverGames();
+    const discoverPool = new Set(discoverGames.map((item) => item.normalizedTitle));
     const trendCreateInputs = await Promise.all(
-      newWords.map((item) => this.buildTrendCreateInput(item)),
+      newWords.map((item) => this.buildTrendCreateInput(item, discoverPool)),
     );
 
     const createdTrends = await this.prisma.$transaction(
@@ -123,14 +130,23 @@ export class TrendService {
     };
   }
 
-  private async buildTrendCreateInput(item: NewWordForTrend) {
+  private async buildTrendCreateInput(
+    item: NewWordForTrend,
+    discoverPool: Set<string>,
+  ) {
     const [{ recentCount, totalCount }, existsOnRoblox] = await Promise.all([
       this.getKeywordCounts(item.keyword),
       this.checkRobloxGameExists(item.keyword),
     ]);
     const growthRate = this.calculateGrowthRate(recentCount, totalCount);
-    const score = this.calculateTrendScore(item.score, growthRate, existsOnRoblox);
-    const stage = this.determineStage(growthRate, recentCount, totalCount);
+    const discoverMatch = this.checkDiscoverMatch(item.keyword, discoverPool);
+    const score = this.calculateTrendScore(
+      item.score,
+      growthRate,
+      existsOnRoblox,
+      discoverMatch,
+    );
+    const stage = this.determineStage(growthRate, recentCount, discoverMatch);
     const type = this.detectGameType(item.keyword);
 
     return {
@@ -218,21 +234,30 @@ export class TrendService {
     }
   }
 
-  calculateTrendScore(baseScore: number, growthRate: number, existsOnRoblox: boolean): number {
+  checkDiscoverMatch(keyword: string, discoverPool: Set<string>): boolean {
+    return discoverPool.has(this.normalizeKeyword(keyword));
+  }
+
+  calculateTrendScore(
+    baseScore: number,
+    growthRate: number,
+    existsOnRoblox: boolean,
+    discoverMatch: boolean,
+  ): number {
     const growthScore = growthRate * 100;
     const robloxExistsScore = existsOnRoblox ? 20 : 0;
+    const discoverScore = discoverMatch ? 100 : 0;
     const weightedScore =
-      baseScore * 0.5 + growthScore * 0.3 + robloxExistsScore * 0.2;
+      baseScore * 0.4 +
+      growthScore * 0.3 +
+      robloxExistsScore * 0.1 +
+      discoverScore * 0.2;
 
     return Number(weightedScore.toFixed(2));
   }
 
-  determineStage(growthRate: number, recentCount: number, totalCount: number): string {
-    if (totalCount < 5) {
-      return 'early';
-    }
-
-    if (growthRate >= 0.6 && recentCount >= 6) {
+  determineStage(growthRate: number, recentCount: number, discoverMatch: boolean): string {
+    if (discoverMatch && growthRate >= 0.5 && recentCount >= 5) {
       return 'exploding';
     }
 
@@ -265,6 +290,10 @@ export class TrendService {
 
     const lastToken = tokens[tokens.length - 1].toLowerCase();
     return this.gameTypes.has(lastToken) ? lastToken : null;
+  }
+
+  normalizeKeyword(input: string): string {
+    return normalizeKeyword(input);
   }
 
   private toApiView(item: TrendRecord): TrendApiView {
