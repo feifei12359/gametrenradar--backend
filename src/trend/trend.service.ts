@@ -18,6 +18,9 @@ type TrendRecord = {
   source: string | null;
   region: string | null;
   aiInsight: string | null;
+  growthRate?: number | null;
+  recentCount?: number | null;
+  totalCount?: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -34,6 +37,7 @@ type TrendApiView = TrendRecord & {
 
 @Injectable()
 export class TrendService {
+  private static readonly RECENT_WINDOW_HOURS = 24;
   private readonly gameTypes = new Set([
     'tycoon',
     'simulator',
@@ -100,10 +104,14 @@ export class TrendService {
 
     await this.prisma.trend.deleteMany();
 
+    const trendCreateInputs = await Promise.all(
+      newWords.map((item) => this.buildTrendCreateInput(item)),
+    );
+
     const createdTrends = await this.prisma.$transaction(
-      newWords.map((item) =>
+      trendCreateInputs.map((input) =>
         this.prisma.trend.create({
-          data: this.buildTrendCreateInput(item),
+          data: input,
         }),
       ),
     );
@@ -114,43 +122,94 @@ export class TrendService {
     };
   }
 
-  private buildTrendCreateInput(item: NewWordForTrend) {
-    const stage = this.resolveStage(item.score);
+  private async buildTrendCreateInput(item: NewWordForTrend) {
+    const { recentCount, totalCount } = await this.getKeywordCounts(item.keyword);
+    const growthRate = this.calculateGrowthRate(recentCount, totalCount);
+    const score = this.calculateTrendScore(item.score, growthRate);
+    const stage = this.determineStage(growthRate);
     const type = this.detectGameType(item.keyword);
 
     return {
       keyword: item.keyword,
-      score: item.score,
+      score,
       stage,
       type,
       source: item.source,
       region: item.region,
-      aiInsight: this.buildInsight(item.keyword, stage),
+      aiInsight: this.buildInsight(item.keyword, stage, growthRate),
+      growthRate,
+      recentCount,
+      totalCount,
     };
   }
 
-  private resolveStage(score: number): string {
-    if (score >= 80) {
+  private async getKeywordCounts(keyword: string): Promise<{
+    recentCount: number;
+    totalCount: number;
+  }> {
+    const recentWindowStart = new Date(
+      Date.now() - TrendService.RECENT_WINDOW_HOURS * 60 * 60 * 1000,
+    );
+
+    const [recentCount, totalCount] = await this.prisma.$transaction([
+      this.prisma.newWord.count({
+        where: {
+          keyword,
+          firstSeenAt: {
+            gte: recentWindowStart,
+          },
+        },
+      }),
+      this.prisma.newWord.count({
+        where: {
+          keyword,
+        },
+      }),
+    ]);
+
+    return {
+      recentCount,
+      totalCount,
+    };
+  }
+
+  calculateGrowthRate(recentCount: number, totalCount: number): number {
+    if (totalCount <= 0) {
+      return 0;
+    }
+
+    return Number((recentCount / totalCount).toFixed(4));
+  }
+
+  calculateTrendScore(baseScore: number, growthRate: number): number {
+    const weightedScore = baseScore * 0.6 + growthRate * 100 * 0.4;
+    return Number(weightedScore.toFixed(2));
+  }
+
+  determineStage(growthRate: number): string {
+    if (growthRate >= 0.6) {
       return 'exploding';
     }
 
-    if (score >= 50) {
+    if (growthRate >= 0.3) {
       return 'early';
     }
 
     return 'normal';
   }
 
-  private buildInsight(keyword: string, stage: string): string {
+  private buildInsight(keyword: string, stage: string, growthRate: number): string {
+    const growthPercent = Math.round(growthRate * 100);
+
     if (stage === 'exploding') {
-      return `${keyword} is showing strong breakout momentum in the MVP pipeline.`;
+      return `${keyword} is showing strong breakout momentum with ${growthPercent}% recent growth concentration.`;
     }
 
     if (stage === 'early') {
-      return `${keyword} is emerging and should be monitored for sustained growth.`;
+      return `${keyword} is emerging with ${growthPercent}% recent growth concentration and should be monitored.`;
     }
 
-    return `${keyword} is tracked as a baseline signal for future scoring updates.`;
+    return `${keyword} is currently a baseline signal with ${growthPercent}% recent growth concentration.`;
   }
 
   detectGameType(keyword: string): string | null {
@@ -167,8 +226,11 @@ export class TrendService {
     return {
       ...item,
       type: item.type ?? null,
+      growthRate: item.growthRate ?? null,
+      recentCount: item.recentCount ?? null,
+      totalCount: item.totalCount ?? null,
       prediction_score: item.score,
-      growth_rate: Number((item.score / 100).toFixed(2)),
+      growth_rate: item.growthRate ?? 0,
       platform_score: Number((item.score / 100).toFixed(2)),
       ai_score: Number((Math.min(item.score + 5, 100) / 100).toFixed(2)),
       acceleration: Number((item.score / 120).toFixed(2)),
