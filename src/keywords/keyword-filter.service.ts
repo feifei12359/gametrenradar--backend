@@ -5,6 +5,26 @@ import { KeywordNormalizerService } from './keyword-normalizer.service';
 @Injectable()
 export class KeywordFilterService {
   private readonly blacklist = new Set<string>(GENERIC_KEYWORDS);
+  private readonly rejectedPrefixTokens = new Set([
+    'play',
+    'playing',
+    'are',
+    'is',
+    'was',
+    'official',
+    'best',
+    'new',
+    'update',
+  ]);
+  private readonly validSuffixTokens = new Set([
+    'tycoon',
+    'simulator',
+    'obby',
+    'survival',
+    'defense',
+    'rng',
+    'battlegrounds',
+  ]);
   private readonly weekdayTokens = new Set([
     'mon',
     'monday',
@@ -39,6 +59,10 @@ export class KeywordFilterService {
     const deduped = new Map<string, string>();
 
     for (const rawCandidate of candidates) {
+      if (this.shouldRejectByPrefix(rawCandidate)) {
+        continue;
+      }
+
       const cleanedPrefix = this.cleanKeywordPrefix(rawCandidate);
       if (!cleanedPrefix) {
         continue;
@@ -66,6 +90,10 @@ export class KeywordFilterService {
         continue;
       }
 
+      if (!this.hasValidSuffix(normalized.tokens)) {
+        continue;
+      }
+
       if (this.blacklist.has(lower)) {
         continue;
       }
@@ -78,6 +106,21 @@ export class KeywordFilterService {
     }
 
     return [...deduped.values()];
+  }
+
+  shouldRejectByPrefix(keyword: string): boolean {
+    const tokens = keyword
+      .trim()
+      .replace(/\s+/g, ' ')
+      .split(' ')
+      .filter(Boolean);
+
+    if (!tokens.length) {
+      return true;
+    }
+
+    const firstToken = tokens[0].toLowerCase();
+    return this.rejectedPrefixTokens.has(firstToken) || tokens[0].length < 3;
   }
 
   cleanKeywordPrefix(keyword: string): string | null {
@@ -99,6 +142,15 @@ export class KeywordFilterService {
     }
 
     return cleanedTokens.join(' ');
+  }
+
+  hasValidSuffix(tokens: string[]): boolean {
+    if (!tokens.length) {
+      return false;
+    }
+
+    const lastToken = tokens[tokens.length - 1].toLowerCase();
+    return this.validSuffixTokens.has(lastToken);
   }
 
   private hasMeaningfulPrefix(candidate: string): boolean {
