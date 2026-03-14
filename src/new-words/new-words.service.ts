@@ -16,6 +16,7 @@ type NewWordRecord = {
   normalizedKeyword?: string | null;
   source: string | null;
   firstSeenAt: Date;
+  lastSeenAt?: Date;
   score: number;
   region: string | null;
   status: string | null;
@@ -97,10 +98,10 @@ export class NewWordsService {
               data: {
                 keyword: item.keyword,
                 normalizedKeyword,
+                lastSeenAt: new Date(),
                 score: item.score,
                 region: item.region,
                 status: 'analyzed',
-                firstSeenAt: new Date(),
               },
             });
 
@@ -113,6 +114,7 @@ export class NewWordsService {
               keyword: item.keyword,
               normalizedKeyword,
               source: item.source,
+              lastSeenAt: new Date(),
               region: item.region,
               score: item.score,
               status: 'analyzed',
