@@ -8,25 +8,38 @@ export class KeywordExtractionService {
     'playing',
     'try',
     'watch',
+    'build',
+    'make',
+    'start',
     'must',
     'today',
     'now',
-    'best',
     'guide',
     'you',
     'this',
-    'game',
     'video',
   ]);
 
   private readonly noiseWords = new Set([
-    'gameplay',
     'roblox',
+    'game',
+    'gameplay',
     'update',
     'updates',
     'codes',
     'code',
     'new',
+  ]);
+
+  private readonly bannedLeadWords = new Set([
+    'how',
+    'why',
+    'when',
+    'where',
+    'what',
+    'every',
+    'best',
+    'top',
   ]);
 
   private readonly weakLeadWords = new Set([
@@ -42,6 +55,7 @@ export class KeywordExtractionService {
     'ever',
     'super',
     'scary',
+    'any',
   ]);
 
   extractCandidates(title: string): string[] {
@@ -89,11 +103,11 @@ export class KeywordExtractionService {
 
     const lowered = tokens.map((token) => token.toLowerCase());
 
-    if (lowered.some((token) => this.bannedWords.has(token))) {
+    if (this.bannedLeadWords.has(lowered[0]) || this.weakLeadWords.has(lowered[0])) {
       return false;
     }
 
-    if (this.weakLeadWords.has(lowered[0])) {
+    if (lowered.some((token) => this.bannedWords.has(token))) {
       return false;
     }
 
