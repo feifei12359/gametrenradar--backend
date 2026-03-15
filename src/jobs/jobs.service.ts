@@ -13,6 +13,23 @@ type JobRunRecord = {
   updatedAt: Date;
 };
 
+type TrendSeedItem = {
+  keyword: string;
+  source: string | null;
+  region: string | null;
+  score: number;
+};
+
+type KeywordEventAggregate = {
+  keyword: string;
+  source: string | null;
+  region: string | null;
+  latestSeenAt: number;
+  count: number;
+  scoreSum: number;
+  scoreCount: number;
+};
+
 @Injectable()
 export class JobsService {
   constructor(
@@ -52,7 +69,11 @@ export class JobsService {
         : await this.prisma.newWord.findMany({
             orderBy: { lastSeenAt: 'desc' },
           });
-    const trendSeedItems =
+    const keywordEventSeedItems =
+      analysis.items.length === 0 && existingNewWords.length === 0
+        ? await this.buildTrendSeedFromKeywordEvents()
+        : [];
+    const trendSeedItems: TrendSeedItem[] =
       analysis.items.length > 0
         ? analysis.items.map((item) => ({
             keyword: item.keyword,
@@ -60,19 +81,25 @@ export class JobsService {
             region: item.region,
             score: item.score,
           }))
-        : existingNewWords.map((item) => ({
-            keyword: item.keyword,
-            source: item.source,
-            region: item.region,
-            score: item.score,
-          }));
+        : existingNewWords.length > 0
+          ? existingNewWords.map((item) => ({
+              keyword: item.keyword,
+              source: item.source,
+              region: item.region,
+              score: item.score,
+            }))
+          : keywordEventSeedItems;
     const trendResult = await this.trendService.generateFromNewWords(trendSeedItems);
 
     const summaryText =
-      analysis.quotaExceeded && analysis.created === 0
+      analysis.created === 0
         ? trendSeedItems.length > 0
-          ? 'YouTube API quota exceeded, regenerated trends from existing NewWord data.'
-          : 'YouTube API quota exceeded, no new videos fetched.'
+          ? existingNewWords.length > 0
+            ? 'YouTube API quota exceeded or no new videos were fetched, regenerated trends from existing NewWord data.'
+            : keywordEventSeedItems.length > 0
+              ? 'YouTube API quota exceeded or no new videos were fetched, regenerated trends from KeywordEvent history.'
+              : 'No data available to rebuild trends.'
+          : 'No data available to rebuild trends.'
         : `Processed ${analysis.created} new words and generated ${trendResult.created} trends.`;
 
     const job = await this.prisma.jobRun.create({
@@ -85,16 +112,26 @@ export class JobsService {
 
     return {
       __responseMessage:
-        analysis.quotaExceeded && analysis.created === 0
+        analysis.created === 0
           ? trendSeedItems.length > 0
-            ? 'Daily job completed, YouTube API quota was exceeded, and trends were regenerated from existing data.'
-            : 'Daily job completed, but YouTube API quota was exceeded and no new videos were fetched.'
+            ? existingNewWords.length > 0
+              ? 'Daily job completed, and trends were regenerated from existing NewWord data.'
+              : keywordEventSeedItems.length > 0
+                ? 'Daily job completed, and trends were regenerated from KeywordEvent history.'
+                : 'Daily job completed, but no data was available to rebuild trends.'
+            : 'Daily job completed, but no data was available to rebuild trends.'
           : undefined,
       job,
       summary: {
         newWordsCreated: analysis.created,
         trendsCreated: trendResult.created,
-        warning: analysis.warning,
+        warning:
+          analysis.warning ??
+          (analysis.created === 0 && keywordEventSeedItems.length > 0
+            ? 'Rebuilt trends from KeywordEvent fallback data.'
+            : analysis.created === 0 && trendSeedItems.length === 0
+              ? 'No data available to rebuild trends.'
+              : undefined),
       },
     };
   }
@@ -102,5 +139,70 @@ export class JobsService {
   async clear(): Promise<{ deleted: number }> {
     const result = await this.prisma.jobRun.deleteMany();
     return { deleted: result.count };
+  }
+
+  private async buildTrendSeedFromKeywordEvents(): Promise<TrendSeedItem[]> {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recentEvents = await this.prisma.keywordEvent.findMany({
+      where: {
+        seenAt: {
+          gte: sevenDaysAgo,
+        },
+      },
+      orderBy: {
+        seenAt: 'desc',
+      },
+    });
+
+    const aggregateMap = new Map<string, KeywordEventAggregate>();
+
+    for (const event of recentEvents) {
+      const existing = aggregateMap.get(event.normalizedKeyword);
+      const eventSeenAt = event.seenAt.getTime();
+
+      if (!existing) {
+        aggregateMap.set(event.normalizedKeyword, {
+          keyword: event.keyword,
+          source: event.source,
+          region: event.region,
+          latestSeenAt: eventSeenAt,
+          count: 1,
+          scoreSum: typeof event.score === 'number' ? event.score : 0,
+          scoreCount: typeof event.score === 'number' ? 1 : 0,
+        });
+        continue;
+      }
+
+      existing.count += 1;
+
+      if (eventSeenAt > existing.latestSeenAt) {
+        existing.keyword = event.keyword;
+        existing.source = event.source;
+        existing.region = event.region;
+        existing.latestSeenAt = eventSeenAt;
+      }
+
+      if (typeof event.score === 'number') {
+        existing.scoreSum += event.score;
+        existing.scoreCount += 1;
+      }
+    }
+
+    return [...aggregateMap.values()]
+      .sort((a, b) => {
+        if (b.count !== a.count) {
+          return b.count - a.count;
+        }
+
+        return b.latestSeenAt - a.latestSeenAt;
+      })
+      .slice(0, 20)
+      .map((item) => ({
+        keyword: item.keyword,
+        source: item.source,
+        region: item.region,
+        score:
+          item.scoreCount > 0 ? Number((item.scoreSum / item.scoreCount).toFixed(2)) : item.count,
+      }));
   }
 }
