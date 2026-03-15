@@ -20,6 +20,7 @@ type TrendRecord = {
   type?: string | null;
   score: number;
   opportunityScore?: number | null;
+  explosionProbability?: number | null;
   source: string | null;
   region: string | null;
   aiInsight: string | null;
@@ -296,12 +297,21 @@ export class TrendService {
       discoverMatch,
       growthRate,
     });
+    const explosionProbability = this.calculateExplosionProbability({
+      stage,
+      growthRate,
+      acceleration,
+      opportunityScore,
+      robloxExists,
+      discoverMatch,
+    });
 
     return {
       keyword: item.keyword,
       normalizedKeyword,
       score: scoreBreakdown.totalScore,
       opportunityScore,
+      explosionProbability,
       stage,
       type,
       source: item.source,
@@ -601,6 +611,63 @@ export class TrendService {
     return Math.min(100, stageScore + robloxScore + discoverScore + growthScore);
   }
 
+  calculateExplosionProbability(input: {
+    stage: string;
+    growthRate: number;
+    acceleration: number;
+    opportunityScore: number;
+    robloxExists: boolean;
+    discoverMatch: boolean;
+  }): number {
+    let score = 0;
+
+    if (input.stage === 'exploding') {
+      score += 35;
+    } else if (input.stage === 'early') {
+      score += 20;
+    } else {
+      score += 5;
+    }
+
+    if (input.growthRate >= 0.8) {
+      score += 20;
+    } else if (input.growthRate >= 0.5) {
+      score += 15;
+    } else if (input.growthRate >= 0.3) {
+      score += 10;
+    } else if (input.growthRate >= 0.1) {
+      score += 5;
+    }
+
+    if (input.acceleration >= 2) {
+      score += 20;
+    } else if (input.acceleration >= 1) {
+      score += 15;
+    } else if (input.acceleration >= 0.5) {
+      score += 10;
+    } else if (input.acceleration > 0) {
+      score += 5;
+    }
+
+    if (input.opportunityScore >= 80) {
+      score += 15;
+    } else if (input.opportunityScore >= 60) {
+      score += 10;
+    } else if (input.opportunityScore >= 40) {
+      score += 5;
+    }
+
+    if (input.robloxExists) {
+      score += 5;
+    }
+
+    if (input.discoverMatch) {
+      score += 5;
+    }
+
+    return Math.min(100, score);
+  }
+
   private normalizeTimelineDays(days?: number): number {
     if (typeof days !== 'number' || !Number.isFinite(days)) {
       return TrendService.DEFAULT_TIMELINE_DAYS;
@@ -630,6 +697,7 @@ export class TrendService {
       growthRate: item.growthRate ?? null,
       acceleration: item.acceleration ?? 0,
       opportunityScore: item.opportunityScore ?? null,
+      explosionProbability: item.explosionProbability ?? null,
       recentCount: item.recentCount ?? null,
       totalCount: item.totalCount ?? null,
       current24hCount: item.current24hCount ?? null,
