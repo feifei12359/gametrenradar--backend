@@ -29,4 +29,10 @@ export class TrendController {
   getTop(@Query('limit') limit?: string) {
     return this.trendService.getTop(limit ? Number(limit) : undefined);
   }
+
+  @Get('timeline')
+  @ResponseMessage('trend timeline fetched')
+  getTimeline(@Query('keyword') keyword: string, @Query('days') days?: string) {
+    return this.trendService.getTimeline(keyword, days ? Number(days) : undefined);
+  }
 }

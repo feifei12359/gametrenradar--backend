@@ -59,11 +59,23 @@ type ScoreBreakdown = {
   totalScore: number;
 };
 
+type TimelinePoint = {
+  date: string;
+  count: number;
+};
+
+type TimelineQueryRow = {
+  date: Date;
+  count: bigint | number;
+};
+
 @Injectable()
 export class TrendService {
   private static readonly RECENT_WINDOW_HOURS = 24;
   private static readonly FRESH_WINDOW_48_HOURS = 48;
   private static readonly FRESH_WINDOW_72_HOURS = 72;
+  private static readonly DEFAULT_TIMELINE_DAYS = 7;
+  private static readonly MAX_TIMELINE_DAYS = 30;
 
   private readonly gameTypes = new Set([
     'tycoon',
@@ -138,6 +150,52 @@ export class TrendService {
     });
 
     return trends.map((item) => this.toApiView(item));
+  }
+
+  async getTimeline(keyword: string, days = TrendService.DEFAULT_TIMELINE_DAYS): Promise<{
+    keyword: string;
+    days: number;
+    points: TimelinePoint[];
+  }> {
+    const normalizedKeyword = this.normalizeKeyword(keyword);
+    const normalizedDays = this.normalizeTimelineDays(days);
+    const endDate = this.startOfUtcDay(new Date());
+    const startDate = new Date(endDate);
+    startDate.setUTCDate(startDate.getUTCDate() - (normalizedDays - 1));
+    const nextDay = new Date(endDate);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+    const rows = await this.prisma.$queryRaw<TimelineQueryRow[]>`
+      SELECT DATE_TRUNC('day', "seenAt") AS date, COUNT(*)::bigint AS count
+      FROM "KeywordEvent"
+      WHERE "normalizedKeyword" = ${normalizedKeyword}
+        AND "seenAt" >= ${startDate}
+        AND "seenAt" < ${nextDay}
+      GROUP BY DATE_TRUNC('day', "seenAt")
+      ORDER BY DATE_TRUNC('day', "seenAt") ASC
+    `;
+
+    const countByDate = new Map<string, number>(
+      rows.map((row) => [this.toIsoDateString(row.date), Number(row.count)]),
+    );
+
+    const points: TimelinePoint[] = [];
+    for (let index = 0; index < normalizedDays; index += 1) {
+      const date = new Date(startDate);
+      date.setUTCDate(startDate.getUTCDate() + index);
+      const dateKey = this.toIsoDateString(date);
+
+      points.push({
+        date: dateKey,
+        count: countByDate.get(dateKey) ?? 0,
+      });
+    }
+
+    return {
+      keyword,
+      days: normalizedDays,
+      points,
+    };
   }
 
   async clearAll(): Promise<{ count: number }> {
@@ -517,6 +575,27 @@ export class TrendService {
 
   normalizeKeyword(input: string): string {
     return normalizeKeyword(input);
+  }
+
+  private normalizeTimelineDays(days?: number): number {
+    if (typeof days !== 'number' || !Number.isFinite(days)) {
+      return TrendService.DEFAULT_TIMELINE_DAYS;
+    }
+
+    const integerDays = Math.trunc(days);
+    if (integerDays <= 0) {
+      return TrendService.DEFAULT_TIMELINE_DAYS;
+    }
+
+    return Math.min(integerDays, TrendService.MAX_TIMELINE_DAYS);
+  }
+
+  private startOfUtcDay(date: Date): Date {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  }
+
+  private toIsoDateString(date: Date): string {
+    return date.toISOString().slice(0, 10);
   }
 
   private toApiView(item: TrendRecord): TrendApiView {
