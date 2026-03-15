@@ -25,7 +25,7 @@ export class TrendController {
   }
 
   @Get('top')
-  @ResponseMessage('top trends fetched')
+  @ResponseMessage('top trends fetched [opportunity-debug-v2]')
   getTop(@Query('limit') limit?: string) {
     return this.trendService.getTop(limit ? Number(limit) : undefined);
   }
