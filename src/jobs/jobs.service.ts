@@ -46,18 +46,33 @@ export class JobsService {
     };
   }> {
     const analysis = await this.newWordsService.analyze();
-    const trendResult = await this.trendService.generateFromNewWords(
-      analysis.items.map((item) => ({
-        keyword: item.keyword,
-        source: item.source,
-        region: item.region,
-        score: item.score,
-      })),
-    );
+    const existingNewWords =
+      analysis.items.length > 0
+        ? []
+        : await this.prisma.newWord.findMany({
+            orderBy: { lastSeenAt: 'desc' },
+          });
+    const trendSeedItems =
+      analysis.items.length > 0
+        ? analysis.items.map((item) => ({
+            keyword: item.keyword,
+            source: item.source,
+            region: item.region,
+            score: item.score,
+          }))
+        : existingNewWords.map((item) => ({
+            keyword: item.keyword,
+            source: item.source,
+            region: item.region,
+            score: item.score,
+          }));
+    const trendResult = await this.trendService.generateFromNewWords(trendSeedItems);
 
     const summaryText =
       analysis.quotaExceeded && analysis.created === 0
-        ? 'YouTube API quota exceeded, no new videos fetched.'
+        ? trendSeedItems.length > 0
+          ? 'YouTube API quota exceeded, regenerated trends from existing NewWord data.'
+          : 'YouTube API quota exceeded, no new videos fetched.'
         : `Processed ${analysis.created} new words and generated ${trendResult.created} trends.`;
 
     const job = await this.prisma.jobRun.create({
@@ -71,7 +86,9 @@ export class JobsService {
     return {
       __responseMessage:
         analysis.quotaExceeded && analysis.created === 0
-          ? 'Daily job completed, but YouTube API quota was exceeded and no new videos were fetched.'
+          ? trendSeedItems.length > 0
+            ? 'Daily job completed, YouTube API quota was exceeded, and trends were regenerated from existing data.'
+            : 'Daily job completed, but YouTube API quota was exceeded and no new videos were fetched.'
           : undefined,
       job,
       summary: {

@@ -690,27 +690,51 @@ export class TrendService {
   }
 
   private toApiView(item: TrendRecord): TrendApiView {
+    const normalizedKeyword = item.normalizedKeyword ?? this.normalizeKeyword(item.keyword);
+    const growthRate = item.growthRate ?? 0;
+    const acceleration = item.acceleration ?? 0;
+    const robloxExists = item.robloxExists ?? false;
+    const discoverMatch = item.discoverMatch ?? false;
+    const opportunityScore =
+      item.opportunityScore ??
+      this.calculateOpportunityScore({
+        stage: item.stage,
+        robloxExists,
+        discoverMatch,
+        growthRate,
+      });
+    const explosionProbability =
+      item.explosionProbability ??
+      this.calculateExplosionProbability({
+        stage: item.stage,
+        growthRate,
+        acceleration,
+        opportunityScore,
+        robloxExists,
+        discoverMatch,
+      });
+
     return {
       ...item,
-      normalizedKeyword: item.normalizedKeyword ?? this.normalizeKeyword(item.keyword),
+      normalizedKeyword,
       type: item.type ?? null,
       growthRate: item.growthRate ?? null,
-      acceleration: item.acceleration ?? 0,
-      opportunityScore: item.opportunityScore ?? null,
-      explosionProbability: item.explosionProbability ?? null,
+      acceleration,
+      opportunityScore,
+      explosionProbability,
       recentCount: item.recentCount ?? null,
       totalCount: item.totalCount ?? null,
       current24hCount: item.current24hCount ?? null,
       previous24hCount: item.previous24hCount ?? null,
-      robloxExists: item.robloxExists ?? false,
-      discoverMatch: item.discoverMatch ?? false,
+      robloxExists,
+      discoverMatch,
       keywordQualityScore: item.keywordQualityScore ?? null,
       growthScore: item.growthScore ?? null,
       robloxExistsScore: item.robloxExistsScore ?? null,
       discoverScore: item.discoverScore ?? null,
       freshnessScore: item.freshnessScore ?? null,
       prediction_score: item.score,
-      growth_rate: item.growthRate ?? 0,
+      growth_rate: growthRate,
       platform_score: Number((item.score / 100).toFixed(2)),
       ai_score: Number((Math.min(item.score + 5, 100) / 100).toFixed(2)),
       platforms: item.source ?? 'youtube',

@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Post, Query } from '@nestjs/common';
 import { ResponseMessage } from '../common/utils/response-message.decorator';
 import { TrendService } from './trend.service';
 
@@ -34,5 +34,11 @@ export class TrendController {
   @ResponseMessage('trend timeline fetched')
   getTimeline(@Query('keyword') keyword: string, @Query('days') days?: string) {
     return this.trendService.getTimeline(keyword, days ? Number(days) : undefined);
+  }
+
+  @Post('clear')
+  @ResponseMessage('trend data cleared')
+  clear() {
+    return this.trendService.clearAll();
   }
 }
