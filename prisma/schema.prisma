@@ -14,6 +14,7 @@ model Trend {
   stage               String
   type                String?
   score               Float
+  opportunityScore    Float?
   source              String?
   region              String?
   aiInsight           String?
