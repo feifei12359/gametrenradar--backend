@@ -26,6 +26,13 @@ type YoutubeSearchResponse = {
   };
 };
 
+export type YoutubeFetchResult = {
+  videos: YoutubeVideoItem[];
+  quotaExceeded: boolean;
+  allFailed: boolean;
+  errors: string[];
+};
+
 @Injectable()
 export class YoutubeSourceService {
   private static readonly HIGH_VALUE_REGIONS = [
@@ -57,7 +64,7 @@ export class YoutubeSourceService {
   private readonly endpoint = 'https://www.googleapis.com/youtube/v3/search';
   private readonly searchQueries = DISCOVERY_CONFIG.youtube.queries;
 
-  async fetchRecentRobloxVideos(): Promise<YoutubeVideoItem[]> {
+  async fetchRecentRobloxVideos(): Promise<YoutubeFetchResult> {
     const publishedAfter = new Date(
       Date.now() - DISCOVERY_CONFIG.youtube.hoursWindow * 60 * 60 * 1000,
     ).toISOString();
@@ -68,14 +75,27 @@ export class YoutubeSourceService {
       ),
     );
 
-    return results.flat().slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal);
+    const successfulResults = results.filter(
+      (result): result is YoutubeVideoItem[] => Array.isArray(result),
+    );
+    const errors = results
+      .filter((result): result is { error: string } => !Array.isArray(result))
+      .map((result) => result.error);
+    const videos = successfulResults.flat().slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal);
+
+    return {
+      videos,
+      quotaExceeded: errors.some((error) => this.isQuotaExceededError(error)),
+      allFailed: successfulResults.length === 0 && errors.length > 0,
+      errors,
+    };
   }
 
   private async fetchByQuery(
     query: string,
     publishedAfter: string,
     region: string,
-  ): Promise<YoutubeVideoItem[]> {
+  ): Promise<YoutubeVideoItem[] | { error: string }> {
     const apiKey = process.env.YOUTUBE_API_KEY;
 
     if (!apiKey) {
@@ -100,7 +120,7 @@ export class YoutubeSourceService {
     if (!response.ok) {
       const message = json.error?.message ?? `YouTube API request failed with ${response.status}`;
       this.logger.error(`Failed query "${query}": ${message}`);
-      throw new InternalServerErrorException(`Failed to fetch YouTube videos: ${message}`);
+      return { error: message };
     }
 
     return (json.items ?? [])
@@ -113,5 +133,10 @@ export class YoutubeSourceService {
         region,
       }))
       .filter((item) => item.videoId && item.title);
+  }
+
+  private isQuotaExceededError(message: string): boolean {
+    const normalizedMessage = message.toLowerCase();
+    return normalizedMessage.includes('quota') || normalizedMessage.includes('quotaexceeded');
   }
 }

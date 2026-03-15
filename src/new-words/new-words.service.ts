@@ -40,6 +40,13 @@ type CandidateKeyword = {
   region: string;
 };
 
+type AnalyzeResult = {
+  created: number;
+  items: NewWordApiView[];
+  warning?: string;
+  quotaExceeded?: boolean;
+};
+
 @Injectable()
 export class NewWordsService {
   private readonly logger = new Logger(NewWordsService.name);
@@ -60,18 +67,21 @@ export class NewWordsService {
     return items.map((item: NewWordRecord) => this.toApiView(item));
   }
 
-  async analyze(dto: AnalyzeNewWordsDto = {}): Promise<{
-    created: number;
-    items: NewWordApiView[];
-  }> {
+  async analyze(dto: AnalyzeNewWordsDto = {}): Promise<AnalyzeResult> {
     try {
-      const videos = await this.youtubeSourceService.fetchRecentRobloxVideos();
-      const candidates = this.buildCandidates(videos, dto.limit);
+      const fetchResult = await this.youtubeSourceService.fetchRecentRobloxVideos();
+      const candidates = this.buildCandidates(fetchResult.videos, dto.limit);
 
       if (!candidates.length) {
         return {
           created: 0,
           items: [],
+          warning: fetchResult.quotaExceeded
+            ? 'YouTube API quota exceeded, no new videos fetched.'
+            : fetchResult.allFailed
+              ? 'No videos were fetched from YouTube.'
+              : undefined,
+          quotaExceeded: fetchResult.quotaExceeded,
         };
       }
 
@@ -142,6 +152,10 @@ export class NewWordsService {
       return {
         created: savedItems.length,
         items: savedItems.map((item: NewWordRecord) => this.toApiView(item)),
+        warning: fetchResult.quotaExceeded
+          ? 'YouTube API quota exceeded for part of the queries.'
+          : undefined,
+        quotaExceeded: fetchResult.quotaExceeded,
       };
     } catch (error) {
       const message =

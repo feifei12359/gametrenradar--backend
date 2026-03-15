@@ -37,10 +37,12 @@ export class JobsService {
   }
 
   async runDailyJob(_dto: RunDailyJobDto = {}): Promise<{
+    __responseMessage?: string;
     job: JobRunRecord;
     summary: {
       newWordsCreated: number;
       trendsCreated: number;
+      warning?: string;
     };
   }> {
     const analysis = await this.newWordsService.analyze();
@@ -53,7 +55,10 @@ export class JobsService {
       })),
     );
 
-    const summaryText = `Processed ${analysis.created} new words and generated ${trendResult.created} trends.`;
+    const summaryText =
+      analysis.quotaExceeded && analysis.created === 0
+        ? 'YouTube API quota exceeded, no new videos fetched.'
+        : `Processed ${analysis.created} new words and generated ${trendResult.created} trends.`;
 
     const job = await this.prisma.jobRun.create({
       data: {
@@ -64,10 +69,15 @@ export class JobsService {
     });
 
     return {
+      __responseMessage:
+        analysis.quotaExceeded && analysis.created === 0
+          ? 'Daily job completed, but YouTube API quota was exceeded and no new videos were fetched.'
+          : undefined,
       job,
       summary: {
         newWordsCreated: analysis.created,
         trendsCreated: trendResult.created,
+        warning: analysis.warning,
       },
     };
   }
