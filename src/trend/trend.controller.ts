@@ -36,6 +36,15 @@ export class TrendController {
     return this.trendService.getTimeline(keyword, days ? Number(days) : undefined);
   }
 
+  @Get('version')
+  getVersion() {
+    return {
+      ok: true,
+      version: 'trend-service-opportunity-v1',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   @Post('clear')
   @ResponseMessage('trend data cleared')
   clear() {

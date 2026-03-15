@@ -42,6 +42,7 @@ type TrendRecord = {
 };
 
 type TrendApiView = TrendRecord & {
+  debugVersion: string;
   prediction_score: number;
   growth_rate: number;
   platform_score: number;
@@ -716,6 +717,7 @@ export class TrendService {
 
     return {
       ...item,
+      debugVersion: 'opportunity-live-check',
       normalizedKeyword,
       type: item.type ?? null,
       growthRate: item.growthRate ?? null,
