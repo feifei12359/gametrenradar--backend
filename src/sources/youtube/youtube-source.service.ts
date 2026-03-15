@@ -33,6 +33,20 @@ export type YoutubeFetchResult = {
   errors: string[];
 };
 
+const YOUTUBE_SEARCH_QUERIES = [
+  'roblox new game',
+  'roblox tycoon',
+  'roblox simulator',
+] as const;
+
+const QUERY_DELAY_MS = 800;
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const MAX_RESULTS_PER_QUERY = 6;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 @Injectable()
 export class YoutubeSourceService {
   private static readonly HIGH_VALUE_REGIONS = [
@@ -62,9 +76,23 @@ export class YoutubeSourceService {
 
   private readonly logger = new Logger(YoutubeSourceService.name);
   private readonly endpoint = 'https://www.googleapis.com/youtube/v3/search';
-  private readonly searchQueries = DISCOVERY_CONFIG.youtube.queries;
+  private cache:
+    | {
+        timestamp: number;
+        data: YoutubeVideoItem[];
+      }
+    | null = null;
 
   async fetchRecentRobloxVideos(): Promise<YoutubeFetchResult> {
+    if (this.cache && Date.now() - this.cache.timestamp < CACHE_TTL_MS) {
+      return {
+        videos: this.cache.data,
+        quotaExceeded: false,
+        allFailed: false,
+        errors: [],
+      };
+    }
+
     const publishedAfter = new Date(
       Date.now() - DISCOVERY_CONFIG.youtube.hoursWindow * 60 * 60 * 1000,
     ).toISOString();
@@ -73,7 +101,9 @@ export class YoutubeSourceService {
     const errors: string[] = [];
     let quotaExceeded = false;
 
-    for (const query of this.searchQueries) {
+    for (const query of YOUTUBE_SEARCH_QUERIES) {
+      let shouldStop = false;
+
       for (const region of YoutubeSourceService.HIGH_VALUE_REGIONS) {
         const result = await this.fetchByQuery(query, publishedAfter, region);
 
@@ -81,39 +111,49 @@ export class YoutubeSourceService {
           videos.push(...result);
 
           if (videos.length >= DISCOVERY_CONFIG.youtube.maxRawVideosTotal) {
+            const limitedVideos = videos.slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal);
+            this.cache = {
+              timestamp: Date.now(),
+              data: limitedVideos,
+            };
+
             return {
-              videos: videos.slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal),
+              videos: limitedVideos,
               quotaExceeded,
               allFailed: false,
               errors,
             };
           }
+        } else {
+          errors.push(result.error);
 
-          continue;
-        }
-
-        errors.push(result.error);
-
-        if (this.isQuotaExceededError(result.error)) {
-          quotaExceeded = true;
-          this.logger.warn(
-            `YouTube quota exceeded while executing query "${query}" for region "${region}". Stopping remaining queries.`,
-          );
-
-          return {
-            videos: videos.slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal),
-            quotaExceeded,
-            allFailed: videos.length === 0 && errors.length > 0,
-            errors,
-          };
+          if (this.isQuotaExceededError(result.error)) {
+            quotaExceeded = true;
+            this.logger.error(`Failed query "${query}" in region "${region}": ${result.error}`);
+            this.logger.warn('YouTube API quota exceeded, returning partial results');
+            shouldStop = true;
+            break;
+          }
         }
       }
+
+      if (shouldStop) {
+        break;
+      }
+
+      await sleep(QUERY_DELAY_MS);
     }
 
+    const limitedVideos = videos.slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal);
+    this.cache = {
+      timestamp: Date.now(),
+      data: limitedVideos,
+    };
+
     return {
-      videos: videos.slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal),
+      videos: limitedVideos,
       quotaExceeded,
-      allFailed: videos.length === 0 && errors.length > 0,
+      allFailed: limitedVideos.length === 0 && errors.length > 0,
       errors,
     };
   }
@@ -136,7 +176,7 @@ export class YoutubeSourceService {
     url.searchParams.set('part', 'snippet');
     url.searchParams.set('type', 'video');
     url.searchParams.set('order', 'date');
-    url.searchParams.set('maxResults', String(DISCOVERY_CONFIG.youtube.maxVideosPerQuery));
+    url.searchParams.set('maxResults', String(MAX_RESULTS_PER_QUERY));
     url.searchParams.set('q', query);
     url.searchParams.set('publishedAfter', publishedAfter);
     url.searchParams.set('regionCode', region);
@@ -146,7 +186,7 @@ export class YoutubeSourceService {
 
     if (!response.ok) {
       const message = json.error?.message ?? `YouTube API request failed with ${response.status}`;
-      this.logger.error(`Failed query "${query}": ${message}`);
+      this.logger.error(`Failed query "${query}" in region "${region}": ${message}`);
       return { error: message };
     }
 
@@ -162,8 +202,15 @@ export class YoutubeSourceService {
       .filter((item) => item.videoId && item.title);
   }
 
-  private isQuotaExceededError(message: string): boolean {
+  private isQuotaExceededError(error: unknown): boolean {
+    const message =
+      error instanceof Error ? error.message : typeof error === 'string' ? error : String(error);
     const normalizedMessage = message.toLowerCase();
-    return normalizedMessage.includes('quota') || normalizedMessage.includes('quotaexceeded');
+
+    return (
+      normalizedMessage.includes('quota') ||
+      normalizedMessage.includes('quotaexceeded') ||
+      normalizedMessage.includes('exceeded your quota')
+    );
   }
 }
