@@ -15,6 +15,7 @@ model Trend {
   type                String?
   score               Float
   opportunityScore    Float?
+  explosionProbability Float?
   source              String?
   region              String?
   aiInsight           String?
