@@ -19,6 +19,7 @@ type TrendRecord = {
   stage: string;
   type?: string | null;
   score: number;
+  opportunityScore?: number | null;
   source: string | null;
   region: string | null;
   aiInsight: string | null;
@@ -289,11 +290,18 @@ export class TrendService {
       acceleration,
       counts.recentCount,
     );
+    const opportunityScore = this.calculateOpportunityScore({
+      stage,
+      robloxExists,
+      discoverMatch,
+      growthRate,
+    });
 
     return {
       keyword: item.keyword,
       normalizedKeyword,
       score: scoreBreakdown.totalScore,
+      opportunityScore,
       stage,
       type,
       source: item.source,
@@ -577,6 +585,22 @@ export class TrendService {
     return normalizeKeyword(input);
   }
 
+  calculateOpportunityScore(input: {
+    stage: string;
+    robloxExists: boolean;
+    discoverMatch: boolean;
+    growthRate: number;
+  }): number {
+    const stageScore =
+      input.stage === 'exploding' ? 40 : input.stage === 'early' ? 30 : 10;
+    const robloxScore = input.robloxExists ? 25 : 5;
+    const discoverScore = input.discoverMatch ? 20 : 0;
+    const growthScore =
+      input.growthRate > 0.6 ? 15 : input.growthRate > 0.3 ? 10 : input.growthRate > 0.1 ? 5 : 0;
+
+    return Math.min(100, stageScore + robloxScore + discoverScore + growthScore);
+  }
+
   private normalizeTimelineDays(days?: number): number {
     if (typeof days !== 'number' || !Number.isFinite(days)) {
       return TrendService.DEFAULT_TIMELINE_DAYS;
@@ -605,6 +629,7 @@ export class TrendService {
       type: item.type ?? null,
       growthRate: item.growthRate ?? null,
       acceleration: item.acceleration ?? 0,
+      opportunityScore: item.opportunityScore ?? null,
       recentCount: item.recentCount ?? null,
       totalCount: item.totalCount ?? null,
       current24hCount: item.current24hCount ?? null,
