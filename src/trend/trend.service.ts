@@ -717,7 +717,7 @@ export class TrendService {
 
     return {
       ...item,
-      debugVersion: 'opportunity-debug-v2',
+      debugVersion: 'trend-top-v5',
       normalizedKeyword,
       type: item.type ?? null,
       growthRate: item.growthRate ?? null,
