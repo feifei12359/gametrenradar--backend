@@ -18,13 +18,11 @@ export const DISCOVERY_CONFIG = {
   youtube: {
     queries: [
       'roblox new game',
-      'roblox simulator',
       'roblox tycoon',
-      'roblox update',
-      'roblox codes',
+      'roblox simulator',
     ],
     hoursWindow: 72,
-    maxVideosPerQuery: 10,
+    maxVideosPerQuery: 5,
     maxRawVideosTotal: 50,
   },
   extraction: {

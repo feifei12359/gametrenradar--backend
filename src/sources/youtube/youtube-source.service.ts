@@ -69,24 +69,51 @@ export class YoutubeSourceService {
       Date.now() - DISCOVERY_CONFIG.youtube.hoursWindow * 60 * 60 * 1000,
     ).toISOString();
 
-    const results = await Promise.all(
-      YoutubeSourceService.HIGH_VALUE_REGIONS.flatMap((region) =>
-        this.searchQueries.map((query) => this.fetchByQuery(query, publishedAfter, region)),
-      ),
-    );
+    const videos: YoutubeVideoItem[] = [];
+    const errors: string[] = [];
+    let quotaExceeded = false;
 
-    const successfulResults = results.filter(
-      (result): result is YoutubeVideoItem[] => Array.isArray(result),
-    );
-    const errors = results
-      .filter((result): result is { error: string } => !Array.isArray(result))
-      .map((result) => result.error);
-    const videos = successfulResults.flat().slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal);
+    for (const query of this.searchQueries) {
+      for (const region of YoutubeSourceService.HIGH_VALUE_REGIONS) {
+        const result = await this.fetchByQuery(query, publishedAfter, region);
+
+        if (Array.isArray(result)) {
+          videos.push(...result);
+
+          if (videos.length >= DISCOVERY_CONFIG.youtube.maxRawVideosTotal) {
+            return {
+              videos: videos.slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal),
+              quotaExceeded,
+              allFailed: false,
+              errors,
+            };
+          }
+
+          continue;
+        }
+
+        errors.push(result.error);
+
+        if (this.isQuotaExceededError(result.error)) {
+          quotaExceeded = true;
+          this.logger.warn(
+            `YouTube quota exceeded while executing query "${query}" for region "${region}". Stopping remaining queries.`,
+          );
+
+          return {
+            videos: videos.slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal),
+            quotaExceeded,
+            allFailed: videos.length === 0 && errors.length > 0,
+            errors,
+          };
+        }
+      }
+    }
 
     return {
-      videos,
-      quotaExceeded: errors.some((error) => this.isQuotaExceededError(error)),
-      allFailed: successfulResults.length === 0 && errors.length > 0,
+      videos: videos.slice(0, DISCOVERY_CONFIG.youtube.maxRawVideosTotal),
+      quotaExceeded,
+      allFailed: videos.length === 0 && errors.length > 0,
       errors,
     };
   }
