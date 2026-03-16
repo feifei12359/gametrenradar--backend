@@ -717,7 +717,7 @@ export class TrendService {
 
     return {
       ...item,
-      debugVersion: 'trend-top-v5',
+      debugVersion: 'trend-top-v6-force',
       normalizedKeyword,
       type: item.type ?? null,
       growthRate: item.growthRate ?? null,

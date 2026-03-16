@@ -84,6 +84,10 @@ export class YoutubeSourceService {
     | null = null;
 
   async fetchRecentRobloxVideos(): Promise<YoutubeFetchResult> {
+    this.logger.warn(
+      `YOUTUBE_QUERY_VERSION=v6-force queries=${YOUTUBE_SEARCH_QUERIES.join(', ')}`,
+    );
+
     if (this.cache && Date.now() - this.cache.timestamp < CACHE_TTL_MS) {
       return {
         videos: this.cache.data,
