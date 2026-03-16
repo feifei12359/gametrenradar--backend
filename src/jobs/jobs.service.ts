@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { NewWordsService } from '../new-words/new-words.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  RobloxDiscoverService,
+  type DiscoverGameItem,
+} from '../sources/roblox/roblox-discover.service';
 import { TrendService } from '../trend/trend.service';
 import { RunDailyJobDto } from './dto/run-daily-job.dto';
 
@@ -39,10 +43,29 @@ type KeywordEventAggregate = {
 
 @Injectable()
 export class JobsService {
+  private readonly validDiscoverSuffixes = new Set([
+    'tycoon',
+    'simulator',
+    'obby',
+    'defense',
+    'survival',
+    'rng',
+    'battlegrounds',
+  ]);
+
+  private readonly ignoredDiscoverTitles = new Set([
+    'roblox',
+    'home',
+    'discover',
+    'recommended for you',
+    'continue',
+  ]);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly newWordsService: NewWordsService,
     private readonly trendService: TrendService,
+    private readonly robloxDiscoverService: RobloxDiscoverService,
   ) {}
 
   async getLatestJob(): Promise<JobRunRecord | { status: string; summary: string }> {
@@ -86,6 +109,12 @@ export class JobsService {
       analysis.items.length === 0 && existingNewWords.length === 0
         ? await this.buildTrendSeedFromKeywordEvents()
         : [];
+    const discoverSeedItems =
+      analysis.items.length === 0 &&
+      existingNewWords.length === 0 &&
+      keywordEventSeedItems.length === 0
+        ? await this.buildTrendSeedFromRobloxDiscover()
+        : [];
     const trendSeedItems: TrendSeedItem[] =
       analysis.items.length > 0
         ? analysis.items.map((item) => ({
@@ -101,7 +130,9 @@ export class JobsService {
               region: item.region,
               score: item.score,
             }))
-          : keywordEventSeedItems;
+          : keywordEventSeedItems.length > 0
+            ? keywordEventSeedItems
+            : discoverSeedItems;
     const trendResult = await this.trendService.generateFromNewWords(trendSeedItems);
 
     const summaryText =
@@ -111,6 +142,8 @@ export class JobsService {
             ? 'YouTube API quota exceeded or no new videos were fetched, regenerated trends from existing NewWord data.'
             : keywordEventSeedItems.length > 0
               ? 'YouTube API quota exceeded or no new videos were fetched, regenerated trends from KeywordEvent history.'
+              : discoverSeedItems.length > 0
+                ? 'YouTube API quota exceeded or no new videos were fetched, regenerated trends from Roblox Discover fallback data.'
               : 'No data available to rebuild trends.'
           : 'No data available to rebuild trends.'
         : `Processed ${analysis.created} new words and generated ${trendResult.created} trends.`;
@@ -131,6 +164,8 @@ export class JobsService {
               ? 'Daily job completed, and trends were regenerated from existing NewWord data.'
               : keywordEventSeedItems.length > 0
                 ? 'Daily job completed, and trends were regenerated from KeywordEvent history.'
+                : discoverSeedItems.length > 0
+                  ? 'Daily job completed, and trends were regenerated from Roblox Discover fallback data.'
                 : 'Daily job completed, but no data was available to rebuild trends.'
             : 'Daily job completed, but no data was available to rebuild trends.'
           : undefined,
@@ -142,6 +177,8 @@ export class JobsService {
           analysis.warning ??
           (analysis.created === 0 && keywordEventSeedItems.length > 0
             ? 'Rebuilt trends from KeywordEvent fallback data.'
+            : analysis.created === 0 && discoverSeedItems.length > 0
+              ? 'Rebuilt trends from Roblox Discover fallback data.'
             : analysis.created === 0 && trendSeedItems.length === 0
               ? 'No data available to rebuild trends.'
               : undefined),
@@ -217,5 +254,60 @@ export class JobsService {
         score:
           item.scoreCount > 0 ? Number((item.scoreSum / item.scoreCount).toFixed(2)) : item.count,
       }));
+  }
+
+  private async buildTrendSeedFromRobloxDiscover(): Promise<TrendSeedItem[]> {
+    const discoverGames = await this.robloxDiscoverService.fetchDiscoverGames();
+    const deduped = new Map<string, TrendSeedItem>();
+
+    for (const item of discoverGames) {
+      if (!this.isValidDiscoverFallback(item)) {
+        continue;
+      }
+
+      if (!deduped.has(item.normalizedTitle)) {
+        deduped.set(item.normalizedTitle, {
+          keyword: item.title,
+          source: 'roblox-discover',
+          region: 'global',
+          score: this.scoreDiscoverFallback(item.title),
+        });
+      }
+    }
+
+    return [...deduped.values()].slice(0, 20);
+  }
+
+  private isValidDiscoverFallback(item: DiscoverGameItem): boolean {
+    const normalizedTitle = item.normalizedTitle.trim();
+    if (!normalizedTitle || normalizedTitle.length < 6) {
+      return false;
+    }
+
+    if (this.ignoredDiscoverTitles.has(normalizedTitle)) {
+      return false;
+    }
+
+    const tokens = normalizedTitle.split(' ').filter(Boolean);
+    if (tokens.length < 2) {
+      return false;
+    }
+
+    const lastToken = tokens[tokens.length - 1];
+    return this.validDiscoverSuffixes.has(lastToken);
+  }
+
+  private scoreDiscoverFallback(title: string): number {
+    const normalizedTitle = title.trim().toLowerCase();
+
+    if (normalizedTitle.includes('battlegrounds')) {
+      return 70;
+    }
+
+    if (normalizedTitle.includes('tycoon') || normalizedTitle.includes('simulator')) {
+      return 65;
+    }
+
+    return 60;
   }
 }
