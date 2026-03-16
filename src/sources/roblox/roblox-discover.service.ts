@@ -23,8 +23,14 @@ export class RobloxDiscoverService {
         },
         timeout: 10000,
       });
+      this.logger.log(`Roblox Discover request succeeded: status=${response.status}`);
 
-      return this.extractDiscoverGames(response.data);
+      const discoverGames = this.extractDiscoverGames(response.data);
+      this.logger.log(`Roblox Discover extractedCandidates=${discoverGames.length}`);
+      this.logger.log(`Roblox Discover returned discoverGames.length=${discoverGames.length}`);
+      this.logger.log(`Roblox Discover sample=${JSON.stringify(discoverGames.slice(0, 10))}`);
+
+      return discoverGames;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
       this.logger.warn(`Failed to fetch Roblox Discover games: ${message}`);
@@ -36,14 +42,12 @@ export class RobloxDiscoverService {
     const $ = cheerio.load(html);
     const deduped = new Map<string, DiscoverGameItem>();
     const selectors = [
-      '[title]',
       'a.game-card-link',
       'a.game-tile-link',
       'div.game-card-name',
       'span.game-card-name',
-      'h3',
-      'h2',
     ];
+    let scriptCandidateCount = 0;
 
     for (const selector of selectors) {
       $(selector).each((_, element) => {
@@ -61,11 +65,15 @@ export class RobloxDiscoverService {
       const matches = scriptContent.matchAll(/"name":"([^"]+)"/g);
 
       for (const match of matches) {
+        scriptCandidateCount += 1;
         this.pushDiscoverCandidate(deduped, match[1] ?? '');
       }
     });
 
-    return [...deduped.values()].slice(0, 200);
+    const extracted = [...deduped.values()].slice(0, 200);
+    this.logger.log(`Roblox Discover scriptCandidates=${scriptCandidateCount}`);
+    this.logger.log(`Roblox Discover dedupedCandidates=${extracted.length}`);
+    return extracted;
   }
 
   private pushDiscoverCandidate(
@@ -78,7 +86,7 @@ export class RobloxDiscoverService {
     }
 
     const normalizedTitle = normalizeKeyword(title);
-    if (!normalizedTitle || normalizedTitle.split(' ').length < 2) {
+    if (!normalizedTitle) {
       return;
     }
 

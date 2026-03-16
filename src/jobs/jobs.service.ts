@@ -268,9 +268,14 @@ export class JobsService {
 
   private async buildTrendSeedFromRobloxDiscover(): Promise<TrendSeedItem[]> {
     const discoverGames = await this.robloxDiscoverService.fetchDiscoverGames();
+    this.logger.log(`discoverGames.length=${discoverGames.length}`);
+
+    const discoverTitles = discoverGames.filter((item) => item.title.trim().length > 0);
+    this.logger.log(`discoverTitles.beforeFilter=${discoverTitles.length}`);
+
     const deduped = new Map<string, TrendSeedItem>();
 
-    for (const item of discoverGames) {
+    for (const item of discoverTitles) {
       if (!this.isValidDiscoverFallback(item)) {
         continue;
       }
@@ -280,12 +285,16 @@ export class JobsService {
           keyword: item.title,
           source: 'roblox-discover',
           region: 'global',
-          score: this.scoreDiscoverFallback(item.title),
+          score: 60,
         });
       }
     }
 
-    return [...deduped.values()].slice(0, 20);
+    const seedItems = [...deduped.values()].slice(0, 20);
+    this.logger.log(`discoverTitles.afterFilter=${seedItems.length}`);
+    this.logger.log(`robloxDiscoverSeedItems.final=${seedItems.length}`);
+
+    return seedItems;
   }
 
   private isValidDiscoverFallback(item: DiscoverGameItem): boolean {
@@ -303,21 +312,6 @@ export class JobsService {
       return false;
     }
 
-    const lastToken = tokens[tokens.length - 1];
-    return this.validDiscoverSuffixes.has(lastToken);
-  }
-
-  private scoreDiscoverFallback(title: string): number {
-    const normalizedTitle = title.trim().toLowerCase();
-
-    if (normalizedTitle.includes('battlegrounds')) {
-      return 70;
-    }
-
-    if (normalizedTitle.includes('tycoon') || normalizedTitle.includes('simulator')) {
-      return 65;
-    }
-
-    return 60;
+    return tokens.some((token) => this.validDiscoverSuffixes.has(token));
   }
 }
