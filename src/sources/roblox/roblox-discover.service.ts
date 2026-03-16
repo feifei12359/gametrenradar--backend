@@ -23,6 +23,16 @@ type ExploreSortsResponse = {
   sorts?: ExploreSort[];
   gameSorts?: ExploreSort[];
   sortsCollection?: ExploreSort[];
+  data?: {
+    sorts?: ExploreSort[];
+    gameSorts?: ExploreSort[];
+    sortsCollection?: ExploreSort[];
+  };
+  response?: {
+    sorts?: ExploreSort[];
+    gameSorts?: ExploreSort[];
+    sortsCollection?: ExploreSort[];
+  };
 };
 
 type ExploreGame = {
@@ -38,6 +48,11 @@ type ExploreContentResponse = {
   games?: ExploreGame[];
   content?: ExploreGame[];
   items?: ExploreGame[];
+  data?: {
+    games?: ExploreGame[];
+    content?: ExploreGame[];
+    items?: ExploreGame[];
+  };
 };
 
 @Injectable()
@@ -66,6 +81,8 @@ export class RobloxDiscoverService {
       );
 
       const sorts = this.extractSorts(sortsResponse.data);
+      this.logger.log(`Roblox Discover sorts.length=${sorts.length}`);
+      this.logger.log(`Roblox Discover sorts sample=${JSON.stringify(sorts.slice(0, 5))}`);
       const candidateSorts = sorts.slice(0, 15);
       const rawCandidates: string[] = [];
 
@@ -92,6 +109,7 @@ export class RobloxDiscoverService {
           );
 
           const gameTitles = this.extractGameTitles(contentResponse.data);
+          this.logger.log(`Roblox Discover sortId=${sortId} titles=${gameTitles.length}`);
           rawCandidates.push(...gameTitles);
         } catch (error) {
           const message = error instanceof Error ? error.message : 'unknown error';
@@ -132,6 +150,30 @@ export class RobloxDiscoverService {
       return payload.sortsCollection;
     }
 
+    if (Array.isArray(payload.data?.sorts)) {
+      return payload.data.sorts;
+    }
+
+    if (Array.isArray(payload.data?.gameSorts)) {
+      return payload.data.gameSorts;
+    }
+
+    if (Array.isArray(payload.data?.sortsCollection)) {
+      return payload.data.sortsCollection;
+    }
+
+    if (Array.isArray(payload.response?.sorts)) {
+      return payload.response.sorts;
+    }
+
+    if (Array.isArray(payload.response?.gameSorts)) {
+      return payload.response.gameSorts;
+    }
+
+    if (Array.isArray(payload.response?.sortsCollection)) {
+      return payload.response.sortsCollection;
+    }
+
     return [];
   }
 
@@ -146,6 +188,12 @@ export class RobloxDiscoverService {
         ? payload.content
         : Array.isArray(payload.items)
           ? payload.items
+          : Array.isArray(payload.data?.games)
+            ? payload.data.games
+            : Array.isArray(payload.data?.content)
+              ? payload.data.content
+              : Array.isArray(payload.data?.items)
+                ? payload.data.items
           : [];
 
     return items
