@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { NewWordsService } from '../new-words/new-words.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -43,6 +43,7 @@ type KeywordEventAggregate = {
 
 @Injectable()
 export class JobsService {
+  private readonly logger = new Logger(JobsService.name);
   private readonly validDiscoverSuffixes = new Set([
     'tycoon',
     'simulator',
@@ -109,12 +110,18 @@ export class JobsService {
       analysis.items.length === 0 && existingNewWords.length === 0
         ? await this.buildTrendSeedFromKeywordEvents()
         : [];
-    const discoverSeedItems =
+    const robloxDiscoverSeedItems =
       analysis.items.length === 0 &&
       existingNewWords.length === 0 &&
       keywordEventSeedItems.length === 0
         ? await this.buildTrendSeedFromRobloxDiscover()
         : [];
+
+    this.logger.log(`analysis.items=${analysis.items.length}`);
+    this.logger.log(`existingNewWords=${existingNewWords.length}`);
+    this.logger.log(`keywordEventSeedItems=${keywordEventSeedItems.length}`);
+    this.logger.log(`robloxDiscoverSeedItems=${robloxDiscoverSeedItems.length}`);
+
     const trendSeedItems: TrendSeedItem[] =
       analysis.items.length > 0
         ? analysis.items.map((item) => ({
@@ -132,7 +139,10 @@ export class JobsService {
             }))
           : keywordEventSeedItems.length > 0
             ? keywordEventSeedItems
-            : discoverSeedItems;
+            : robloxDiscoverSeedItems;
+
+    this.logger.log(`trendSeedItems=${trendSeedItems.length}`);
+
     const trendResult = await this.trendService.generateFromNewWords(trendSeedItems);
 
     const summaryText =
@@ -142,9 +152,9 @@ export class JobsService {
             ? 'YouTube API quota exceeded or no new videos were fetched, regenerated trends from existing NewWord data.'
             : keywordEventSeedItems.length > 0
               ? 'YouTube API quota exceeded or no new videos were fetched, regenerated trends from KeywordEvent history.'
-              : discoverSeedItems.length > 0
-                ? 'YouTube API quota exceeded or no new videos were fetched, regenerated trends from Roblox Discover fallback data.'
-              : 'No data available to rebuild trends.'
+              : robloxDiscoverSeedItems.length > 0
+                ? 'Regenerated trends from Roblox Discover fallback data.'
+                : 'No data available to rebuild trends.'
           : 'No data available to rebuild trends.'
         : `Processed ${analysis.created} new words and generated ${trendResult.created} trends.`;
 
@@ -164,9 +174,9 @@ export class JobsService {
               ? 'Daily job completed, and trends were regenerated from existing NewWord data.'
               : keywordEventSeedItems.length > 0
                 ? 'Daily job completed, and trends were regenerated from KeywordEvent history.'
-                : discoverSeedItems.length > 0
+                : robloxDiscoverSeedItems.length > 0
                   ? 'Daily job completed, and trends were regenerated from Roblox Discover fallback data.'
-                : 'Daily job completed, but no data was available to rebuild trends.'
+                  : 'Daily job completed, but no data was available to rebuild trends.'
             : 'Daily job completed, but no data was available to rebuild trends.'
           : undefined,
       job,
@@ -177,10 +187,10 @@ export class JobsService {
           analysis.warning ??
           (analysis.created === 0 && keywordEventSeedItems.length > 0
             ? 'Rebuilt trends from KeywordEvent fallback data.'
-            : analysis.created === 0 && discoverSeedItems.length > 0
+            : analysis.created === 0 && robloxDiscoverSeedItems.length > 0
               ? 'Rebuilt trends from Roblox Discover fallback data.'
-            : analysis.created === 0 && trendSeedItems.length === 0
-              ? 'No data available to rebuild trends.'
+              : analysis.created === 0 && trendSeedItems.length === 0
+                ? 'No data available to rebuild trends.'
               : undefined),
       },
     };
