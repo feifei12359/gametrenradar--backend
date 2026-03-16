@@ -121,7 +121,7 @@ export class TrendService {
       orderBy: { score: 'desc' },
     });
 
-    return trends.map((item) => this.toApiView(item));
+    return trends.map((item: TrendRecord) => this.toApiView(item));
   }
 
   async getEarly(): Promise<TrendApiView[]> {
@@ -130,7 +130,7 @@ export class TrendService {
       orderBy: { score: 'desc' },
     });
 
-    return trends.map((item) => this.toApiView(item));
+    return trends.map((item: TrendRecord) => this.toApiView(item));
   }
 
   async getAll(): Promise<TrendApiView[]> {
@@ -138,7 +138,7 @@ export class TrendService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return trends.map((item) => this.toApiView(item));
+    return trends.map((item: TrendRecord) => this.toApiView(item));
   }
 
   async getTop(limit?: number): Promise<TrendApiView[]> {
@@ -152,7 +152,7 @@ export class TrendService {
       take: normalizedLimit,
     });
 
-    return trends.map((item) => this.toApiView(item));
+    return trends.map((item: TrendRecord) => this.toApiView(item));
   }
 
   async getTimeline(keyword: string, days = TrendService.DEFAULT_TIMELINE_DAYS): Promise<{
@@ -179,7 +179,7 @@ export class TrendService {
     `;
 
     const countByDate = new Map<string, number>(
-      rows.map((row) => [this.toIsoDateString(row.date), Number(row.count)]),
+      rows.map((row: TimelineQueryRow) => [this.toIsoDateString(row.date), Number(row.count)]),
     );
 
     const points: TimelinePoint[] = [];

@@ -13,6 +13,13 @@ type JobRunRecord = {
   updatedAt: Date;
 };
 
+type NewWordSeedRecord = {
+  keyword: string;
+  source: string | null;
+  region: string | null;
+  score: number;
+};
+
 type TrendSeedItem = {
   keyword: string;
   source: string | null;
@@ -63,10 +70,16 @@ export class JobsService {
     };
   }> {
     const analysis = await this.newWordsService.analyze();
-    const existingNewWords =
+    const existingNewWords: NewWordSeedRecord[] =
       analysis.items.length > 0
         ? []
         : await this.prisma.newWord.findMany({
+            select: {
+              keyword: true,
+              source: true,
+              region: true,
+              score: true,
+            },
             orderBy: { lastSeenAt: 'desc' },
           });
     const keywordEventSeedItems =

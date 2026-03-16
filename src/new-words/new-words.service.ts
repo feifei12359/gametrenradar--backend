@@ -1,4 +1,5 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { DISCOVERY_CONFIG } from '../config/discovery.config';
 import { KeywordExtractionService } from '../keywords/keyword-extraction.service';
 import { KeywordFilterService } from '../keywords/keyword-filter.service';
@@ -85,7 +86,7 @@ export class NewWordsService {
         };
       }
 
-      const savedItems = await this.prisma.$transaction(async (tx) => {
+      const savedItems = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const results: NewWordRecord[] = [];
 
         for (const item of candidates) {
