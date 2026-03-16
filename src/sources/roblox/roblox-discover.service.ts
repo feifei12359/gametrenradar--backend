@@ -43,15 +43,15 @@ type ExploreContentResponse = {
 @Injectable()
 export class RobloxDiscoverService {
   private readonly logger = new Logger(RobloxDiscoverService.name);
-  private readonly sessionId = randomUUID();
   private readonly sortsUrl = 'https://apis.roblox.com/explore-api/v1/get-sorts';
   private readonly sortContentUrl = 'https://apis.roblox.com/explore-api/v1/get-sort-content';
 
   async fetchDiscoverGames(): Promise<DiscoverGameItem[]> {
     try {
+      const sessionId = randomUUID();
       const sortsResponse = await axios.get<ExploreSortsResponse>(this.sortsUrl, {
         params: {
-          sessionId: this.sessionId,
+          sessionId,
         },
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; GameTrendRadar/1.0)',
@@ -61,9 +61,12 @@ export class RobloxDiscoverService {
       });
 
       this.logger.log(`Roblox Discover request succeeded: status=${sortsResponse.status}`);
+      this.logger.log(
+        `Roblox Discover sorts keys=${Object.keys(sortsResponse.data ?? {}).join(',')}`,
+      );
 
       const sorts = this.extractSorts(sortsResponse.data);
-      const candidateSorts = sorts.slice(0, 6);
+      const candidateSorts = sorts.slice(0, 15);
       const rawCandidates: string[] = [];
 
       for (const sort of candidateSorts) {
@@ -75,7 +78,7 @@ export class RobloxDiscoverService {
         try {
           const contentResponse = await axios.get<ExploreContentResponse>(this.sortContentUrl, {
             params: {
-              sessionId: this.sessionId,
+              sessionId,
               sortId,
             },
             headers: {
@@ -84,6 +87,9 @@ export class RobloxDiscoverService {
             },
             timeout: 10000,
           });
+          this.logger.log(
+            `Roblox Discover sortContent keys=${Object.keys(contentResponse.data ?? {}).join(',')}`,
+          );
 
           const gameTitles = this.extractGameTitles(contentResponse.data);
           rawCandidates.push(...gameTitles);
